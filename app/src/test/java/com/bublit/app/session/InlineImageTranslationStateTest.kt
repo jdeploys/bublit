@@ -75,4 +75,22 @@ class InlineImageTranslationStateTest {
 
         assertEquals(false, state.progress.isVisible)
     }
+
+    @Test
+    fun restartRequeuesCurrentCandidatesAndClearsPreviousTranslationResults() {
+        val state = InlineImageTranslationState().discoverImages(
+            enabled = true,
+            candidates = listOf(
+                ImageCandidate("https://example.com/page-1.jpg", 1080, 1600, top = 120),
+            ),
+        ).complete(
+            imageUrl = "https://example.com/page-1.jpg",
+            translatedImageUri = "data:image/png;base64,AQID",
+        )
+
+        val restarted = state.restart()
+
+        assertEquals(listOf("https://example.com/page-1.jpg"), restarted.pendingImageUrls)
+        assertEquals(emptyMap<String, String>(), restarted.translatedImageUris)
+    }
 }

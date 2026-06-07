@@ -19,11 +19,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -46,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.bublit.app.R
 import com.bublit.app.domain.ImageCandidate
+import com.bublit.app.domain.OcrScanLanguage
 import com.bublit.app.session.InlineImageTranslationProgress
 import com.bublit.app.web.BrowserWebView
 
@@ -58,11 +61,13 @@ fun BrowserScreen(
     imageCandidateCount: Int,
     translatedImageUris: Map<String, String>,
     translationProgress: InlineImageTranslationProgress,
+    preferredOcrLanguage: OcrScanLanguage,
     onUrlInputChange: (String) -> Unit,
     onActiveUrlChange: (String) -> Unit,
     onNavigate: () -> Unit,
     onImageTranslationEnabledChange: (Boolean) -> Unit,
     onStatusChange: (String) -> Unit,
+    onPreferredOcrLanguageChange: (OcrScanLanguage) -> Unit,
     onImagesDiscovered: (List<ImageCandidate>) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -84,6 +89,7 @@ fun BrowserScreen(
                 canGoForward = canGoForward,
                 isImageTranslationEnabled = isImageTranslationEnabled,
                 imageCandidateCount = imageCandidateCount,
+                preferredOcrLanguage = preferredOcrLanguage,
                 onUrlInputChange = onUrlInputChange,
                 onBackClick = { webView?.goBack() },
                 onForwardClick = { webView?.goForward() },
@@ -102,6 +108,7 @@ fun BrowserScreen(
                         onStatusChange("")
                     }
                 },
+                onPreferredOcrLanguageChange = onPreferredOcrLanguageChange,
             )
         },
     ) { innerPadding ->
@@ -168,11 +175,13 @@ private fun BrowserTopBar(
     canGoForward: Boolean,
     isImageTranslationEnabled: Boolean,
     imageCandidateCount: Int,
+    preferredOcrLanguage: OcrScanLanguage,
     onUrlInputChange: (String) -> Unit,
     onBackClick: () -> Unit,
     onForwardClick: () -> Unit,
     onNavigate: () -> Unit,
     onToggleImageTranslation: () -> Unit,
+    onPreferredOcrLanguageChange: (OcrScanLanguage) -> Unit,
 ) {
     var isAddressFocused by remember { mutableStateOf(false) }
 
@@ -253,6 +262,16 @@ private fun BrowserTopBar(
                 }
             }
 
+            if (isImageTranslationEnabled && !isAddressFocused) {
+                PreferredOcrLanguageSelector(
+                    selectedLanguage = preferredOcrLanguage,
+                    onLanguageSelected = onPreferredOcrLanguageChange,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 96.dp, end = 56.dp, bottom = 7.dp),
+                )
+            }
+
             if (isLoading) {
                 LinearProgressIndicator(
                     modifier = Modifier
@@ -263,6 +282,39 @@ private fun BrowserTopBar(
                 )
             } else {
                 HorizontalDivider(color = Color(0xFFE1E6EA))
+            }
+        }
+    }
+}
+
+@Composable
+private fun PreferredOcrLanguageSelector(
+    selectedLanguage: OcrScanLanguage,
+    onLanguageSelected: (OcrScanLanguage) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        OcrScanLanguage.entries.forEach { language ->
+            val selected = language == selectedLanguage
+            TextButton(
+                onClick = { onLanguageSelected(language) },
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.textButtonColors(
+                    containerColor = if (selected) Color(0xFF25686F) else Color.Transparent,
+                    contentColor = if (selected) Color.White else Color(0xFF52606A),
+                ),
+                modifier = Modifier.height(28.dp),
+                contentPadding = ButtonDefaults.TextButtonContentPadding,
+            ) {
+                Text(
+                    text = language.shortLabel,
+                    fontSize = 12.sp,
+                    maxLines = 1,
+                )
             }
         }
     }

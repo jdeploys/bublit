@@ -11,6 +11,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import com.bublit.app.domain.OcrScanLanguage
 import com.bublit.app.pipeline.ImageProcessingService
 import com.bublit.app.session.BrowserSessionState
 import com.bublit.app.session.InlineImageTranslationState
@@ -34,6 +35,7 @@ fun BublitApp(modifier: Modifier = Modifier) {
     var extractionStatus by rememberSaveable { mutableStateOf("") }
     var inlineTranslationState by remember { mutableStateOf(InlineImageTranslationState()) }
     var isImageTranslationEnabled by rememberSaveable { mutableStateOf(false) }
+    var preferredOcrLanguage by rememberSaveable { mutableStateOf(OcrScanLanguage.English) }
 
     LaunchedEffect(loadedUrl, urlInput) {
         browserSessionStore.edit()
@@ -48,7 +50,7 @@ fun BublitApp(modifier: Modifier = Modifier) {
         val remainingCount = inlineTranslationState.pendingImageUrls.size
         extractionStatus = "Translating image 1/$remainingCount..."
         val processed = runCatching {
-            imageProcessingService.process(imageUrl)
+            imageProcessingService.process(imageUrl, preferredOcrLanguage)
         }
 
         inlineTranslationState = processed.fold(
@@ -92,6 +94,7 @@ fun BublitApp(modifier: Modifier = Modifier) {
             imageCandidateCount = inlineTranslationState.candidates.size,
             translatedImageUris = inlineTranslationState.translatedImageUris,
             translationProgress = inlineTranslationState.progress,
+            preferredOcrLanguage = preferredOcrLanguage,
             onUrlInputChange = { urlInput = it },
             onActiveUrlChange = { loadedUrl = it },
             onNavigate = ::navigateToUrl,
@@ -102,6 +105,13 @@ fun BublitApp(modifier: Modifier = Modifier) {
                 }
             },
             onStatusChange = { extractionStatus = it },
+            onPreferredOcrLanguageChange = { language ->
+                preferredOcrLanguage = language
+                if (isImageTranslationEnabled && inlineTranslationState.candidates.isNotEmpty()) {
+                    inlineTranslationState = inlineTranslationState.restart()
+                    extractionStatus = "Scanning ${language.shortLabel} first..."
+                }
+            },
             onImagesDiscovered = { candidates ->
                 inlineTranslationState = inlineTranslationState.discoverImages(
                     enabled = isImageTranslationEnabled,

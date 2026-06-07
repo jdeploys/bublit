@@ -57,6 +57,16 @@ data class InlineImageTranslationState(
         )
     }
 
+    fun restart(): InlineImageTranslationState {
+        return copy(
+            pendingImageUrls = candidates
+                .mapNotNull { candidate -> candidate.url.takeIf { it.isNotBlank() } }
+                .distinct(),
+            translatedImageUris = emptyMap(),
+            failedImageUrls = emptySet(),
+        )
+    }
+
     fun clear(): InlineImageTranslationState = InlineImageTranslationState()
 }
 

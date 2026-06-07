@@ -6,6 +6,7 @@ import android.graphics.Rect
 import com.bublit.app.domain.ScriptDetector
 import com.bublit.app.domain.BubbleBounds
 import com.bublit.app.domain.OcrTextBlock
+import com.bublit.app.domain.OcrScanLanguage
 import com.bublit.app.domain.SourceLanguage
 import com.bublit.app.domain.SpeechBubbleClassifier
 import com.bublit.app.domain.TypesetPlanner
@@ -29,9 +30,12 @@ class ImageProcessingService(
     private val scriptDetector: ScriptDetector = ScriptDetector(),
     private val typesetPlanner: TypesetPlanner = TypesetPlanner(),
 ) {
-    suspend fun process(imageUrl: String): ProcessedImage = withContext(Dispatchers.IO) {
+    suspend fun process(
+        imageUrl: String,
+        preferredLanguage: OcrScanLanguage = OcrScanLanguage.English,
+    ): ProcessedImage = withContext(Dispatchers.IO) {
         val original = downloadBitmap(imageUrl)
-        val ocrBlocks = recognizeBlocks(original)
+        val ocrBlocks = recognizeBlocks(original, preferredLanguage)
         val plan = buildPlan(ocrBlocks)
         val rendered = renderer.render(original, plan)
         val renderedImageUri = encodeRenderedBitmap(rendered)
@@ -56,11 +60,35 @@ class ImageProcessingService(
         }
     }
 
-    private suspend fun recognizeBlocks(bitmap: Bitmap): List<OcrTextBlock> {
-        val latin = runCatching { ocrEngine.recognizeLatin(bitmap).toOcrBlocks(bitmap) }.getOrDefault(emptyList())
-        val chinese = runCatching { ocrEngine.recognizeChinese(bitmap).toOcrBlocks(bitmap) }.getOrDefault(emptyList())
-        val japanese = runCatching { ocrEngine.recognizeJapanese(bitmap).toOcrBlocks(bitmap) }.getOrDefault(emptyList())
-        return (latin + chinese + japanese).distinctBy { block ->
+    private suspend fun recognizeBlocks(
+        bitmap: Bitmap,
+        preferredLanguage: OcrScanLanguage,
+    ): List<OcrTextBlock> {
+        val primaryBlocks = recognizeBlocksForLanguage(bitmap, preferredLanguage)
+        if (primaryBlocks.isNotEmpty()) return primaryBlocks.deduplicateOcrBlocks()
+
+        val fallbackBlocks = ocrScanOrder(preferredLanguage)
+            .drop(1)
+            .flatMap { language -> recognizeBlocksForLanguage(bitmap, language) }
+        return fallbackBlocks.deduplicateOcrBlocks()
+    }
+
+    private suspend fun recognizeBlocksForLanguage(
+        bitmap: Bitmap,
+        language: OcrScanLanguage,
+    ): List<OcrTextBlock> {
+        return when (language) {
+            OcrScanLanguage.English -> runCatching { ocrEngine.recognizeLatin(bitmap).toOcrBlocks(bitmap) }
+                .getOrDefault(emptyList())
+            OcrScanLanguage.Chinese -> runCatching { ocrEngine.recognizeChinese(bitmap).toOcrBlocks(bitmap) }
+                .getOrDefault(emptyList())
+            OcrScanLanguage.Japanese -> runCatching { ocrEngine.recognizeJapanese(bitmap).toOcrBlocks(bitmap) }
+                .getOrDefault(emptyList())
+        }
+    }
+
+    private fun List<OcrTextBlock>.deduplicateOcrBlocks(): List<OcrTextBlock> {
+        return distinctBy { block ->
             "${block.text}:${block.bounds.left}:${block.bounds.top}:${block.bounds.width}:${block.bounds.height}"
         }
     }
@@ -161,3 +189,7 @@ data class ProcessedImage(
     val acceptedBlocks: Int,
     val rejectedBlocks: Int,
 )
+
+internal fun ocrScanOrder(preferredLanguage: OcrScanLanguage): List<OcrScanLanguage> {
+    return listOf(preferredLanguage) + OcrScanLanguage.entries.filter { it != preferredLanguage }
+}

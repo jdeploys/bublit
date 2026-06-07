@@ -17,6 +17,14 @@ enum class SourceLanguage {
     Unknown,
 }
 
+enum class OcrScanLanguage(
+    val shortLabel: String,
+) {
+    English("EN"),
+    Chinese("ZH"),
+    Japanese("JA"),
+}
+
 data class BubbleBounds(
     val left: Int,
     val top: Int,
