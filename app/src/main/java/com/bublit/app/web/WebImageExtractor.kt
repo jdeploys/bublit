@@ -2,30 +2,39 @@ package com.bublit.app.web
 
 import com.bublit.app.domain.ImageCandidate
 import com.bublit.app.domain.ImageCandidateFilter
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 class WebImageExtractor(
     private val filter: ImageCandidateFilter = ImageCandidateFilter(),
 ) {
     fun parseCandidates(json: String): List<ImageCandidate> {
-        if (!json.trimStart().startsWith("[")) return emptyList()
+        val trimmedJson = json.trim()
+        if (!trimmedJson.startsWith("[")) return emptyList()
 
-        val rawCandidates = objectPattern.findAll(json).mapNotNull { match ->
-            val body = match.groupValues[1]
-            val src = stringValue(body, "src").trim()
-            if (src.isBlank()) {
-                null
-            } else {
-                ImageCandidate(
-                    url = src,
-                    width = intValue(body, "width"),
-                    height = intValue(body, "height"),
-                    naturalWidth = intValue(body, "naturalWidth").takeIf { it > 0 },
-                    naturalHeight = intValue(body, "naturalHeight").takeIf { it > 0 },
-                    left = intValue(body, "left"),
-                    top = intValue(body, "top"),
-                )
+        val rawCandidates = runCatching {
+            jsonParser.parseToJsonElement(trimmedJson).jsonArray.mapNotNull { element ->
+                val body = element.jsonObject
+                val src = body.stringValue("src").trim()
+                if (src.isBlank()) {
+                    null
+                } else {
+                    ImageCandidate(
+                        url = src,
+                        width = body.intValue("width"),
+                        height = body.intValue("height"),
+                        naturalWidth = body.intValue("naturalWidth").takeIf { it > 0 },
+                        naturalHeight = body.intValue("naturalHeight").takeIf { it > 0 },
+                        left = body.intValue("left"),
+                        top = body.intValue("top"),
+                    )
+                }
             }
-        }.toList()
+        }.getOrDefault(emptyList())
 
         return filter.retainComicImages(rawCandidates)
     }
@@ -51,14 +60,15 @@ class WebImageExtractor(
     }
 }
 
-private val objectPattern = Regex("""\{([^{}]*)}""")
-
-private fun stringValue(body: String, key: String): String {
-    val pattern = Regex(""""$key"\s*:\s*"([^"]*)"""")
-    return pattern.find(body)?.groupValues?.get(1).orEmpty()
+private val jsonParser = Json {
+    ignoreUnknownKeys = true
+    isLenient = true
 }
 
-private fun intValue(body: String, key: String): Int {
-    val pattern = Regex(""""$key"\s*:\s*(-?\d+)""")
-    return pattern.find(body)?.groupValues?.get(1)?.toIntOrNull() ?: 0
+private fun JsonObject.stringValue(key: String): String {
+    return this[key]?.jsonPrimitive?.content.orEmpty()
+}
+
+private fun JsonObject.intValue(key: String): Int {
+    return this[key]?.jsonPrimitive?.intOrNull ?: 0
 }

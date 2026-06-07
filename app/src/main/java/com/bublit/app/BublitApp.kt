@@ -12,17 +12,16 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import com.bublit.app.domain.ImageCandidate
 import com.bublit.app.pipeline.ImageProcessingService
-import com.bublit.app.ui.HomeScreen
+import com.bublit.app.ui.BrowserScreen
 import com.bublit.app.ui.ImageProcessingStage
 import com.bublit.app.ui.ReaderImageItem
 import com.bublit.app.ui.ReaderMode
 import com.bublit.app.ui.ReaderScreen
-import com.bublit.app.ui.WebLoadingScreen
 
 private enum class BublitScreen {
-    Home,
-    Loading,
+    Browser,
     Reader,
 }
 
@@ -32,16 +31,16 @@ fun BublitApp(modifier: Modifier = Modifier) {
     val imageProcessingService = remember(context) {
         ImageProcessingService(context.applicationContext)
     }
-    var currentScreen by rememberSaveable { mutableStateOf(BublitScreen.Home) }
-    var urlInput by rememberSaveable { mutableStateOf("https://example.com/webtoon/episode-1") }
-    var loadedUrl by rememberSaveable { mutableStateOf("") }
-    var extractionStatus by rememberSaveable {
-        mutableStateOf("Waiting for a URL. Sample processing will run locally for this preview.")
-    }
+    var currentScreen by rememberSaveable { mutableStateOf(BublitScreen.Browser) }
+    var urlInput by rememberSaveable { mutableStateOf("https://www.google.com") }
+    var loadedUrl by rememberSaveable { mutableStateOf("https://www.google.com") }
+    var extractionStatus by rememberSaveable { mutableStateOf("") }
     var readerMode by rememberSaveable { mutableStateOf(ReaderMode.Continuous) }
     var showTranslated by rememberSaveable { mutableStateOf(true) }
     var focusedIndex by rememberSaveable { mutableIntStateOf(0) }
     var readerItems by remember { mutableStateOf(emptyList<ReaderImageItem>()) }
+    var imageCandidates by remember { mutableStateOf(emptyList<ImageCandidate>()) }
+    var isImageTranslationEnabled by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(currentScreen, loadedUrl) {
         if (currentScreen != BublitScreen.Reader) return@LaunchedEffect
@@ -90,53 +89,64 @@ fun BublitApp(modifier: Modifier = Modifier) {
         }
     }
 
-    fun beginPageLoad() {
-        val normalizedUrl = urlInput.trim().ifBlank { "https://example.com/webtoon/episode-1" }
+    fun normalizeUrl(rawUrl: String): String {
+        val trimmed = rawUrl.trim()
+        if (trimmed.isBlank()) return loadedUrl
+        return if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+            trimmed
+        } else {
+            "https://$trimmed"
+        }
+    }
+
+    fun navigateToUrl() {
+        val normalizedUrl = normalizeUrl(urlInput)
         loadedUrl = normalizedUrl
+        imageCandidates = emptyList()
         extractionStatus = "Loading page..."
-        currentScreen = BublitScreen.Loading
+    }
+
+    fun openReaderFromCandidates(candidates: List<ImageCandidate>) {
+        if (candidates.isEmpty()) return
+        readerItems = candidates.mapIndexed { index, candidate ->
+            ReaderImageItem(
+                id = "dom-$index",
+                title = "Image ${index + 1}",
+                sourceUrl = candidate.url,
+                imageUrl = candidate.url,
+                originalCaption = "Detected speech bubble",
+                translatedCaption = "로컬 번역 준비 중",
+                stage = ImageProcessingStage.Queued,
+                paletteColor = samplePalette(index),
+            )
+        }
+        focusedIndex = 0
+        currentScreen = BublitScreen.Reader
     }
 
     Surface(modifier = modifier.fillMaxSize()) {
         when (currentScreen) {
-            BublitScreen.Home -> HomeScreen(
+            BublitScreen.Browser -> BrowserScreen(
+                activeUrl = loadedUrl,
                 urlInput = urlInput,
-                extractionStatus = extractionStatus,
-                canOpenReader = readerItems.isNotEmpty(),
-                onUrlInputChange = { urlInput = it },
-                onLoadClick = ::beginPageLoad,
-                onOpenReaderClick = { currentScreen = BublitScreen.Reader },
-            )
-
-            BublitScreen.Loading -> WebLoadingScreen(
-                url = loadedUrl.ifBlank { urlInput },
                 status = extractionStatus,
-                onBackClick = { currentScreen = BublitScreen.Home },
+                isImageTranslationEnabled = isImageTranslationEnabled,
+                imageCandidateCount = imageCandidates.size,
+                onUrlInputChange = { urlInput = it },
+                onActiveUrlChange = { loadedUrl = it },
+                onNavigate = ::navigateToUrl,
+                onImageTranslationEnabledChange = { enabled ->
+                    isImageTranslationEnabled = enabled
+                    if (!enabled) {
+                        imageCandidates = emptyList()
+                    }
+                },
                 onStatusChange = { extractionStatus = it },
-                onImagesExtracted = { candidates ->
-                    readerItems = if (candidates.isEmpty()) {
-                        sampleReaderItems(loadedUrl.ifBlank { urlInput })
-                    } else {
-                        candidates.mapIndexed { index, candidate ->
-                            ReaderImageItem(
-                                id = "dom-$index",
-                                title = "Image ${index + 1}",
-                                sourceUrl = candidate.url,
-                                imageUrl = candidate.url,
-                                originalCaption = "Detected speech bubble",
-                                translatedCaption = "로컬 번역 준비 중",
-                                stage = ImageProcessingStage.Queued,
-                                paletteColor = samplePalette(index),
-                            )
-                        }
+                onImagesDiscovered = { candidates ->
+                    imageCandidates = candidates
+                    if (isImageTranslationEnabled && candidates.isNotEmpty()) {
+                        openReaderFromCandidates(candidates)
                     }
-                    focusedIndex = 0
-                    extractionStatus = if (candidates.isEmpty()) {
-                        "No large DOM comic images found. Showing local sample reader."
-                    } else {
-                        "Extracted ${candidates.size} DOM image candidates."
-                    }
-                    currentScreen = BublitScreen.Reader
                 },
             )
 
@@ -147,7 +157,7 @@ fun BublitApp(modifier: Modifier = Modifier) {
                 showTranslated = showTranslated,
                 items = readerItems,
                 focusedIndex = focusedIndex,
-                onBackClick = { currentScreen = BublitScreen.Home },
+                onBackClick = { currentScreen = BublitScreen.Browser },
                 onReaderModeChange = { readerMode = it },
                 onShowTranslatedChange = { showTranslated = it },
                 onPreviousImageClick = {
