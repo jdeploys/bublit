@@ -6,18 +6,14 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
@@ -396,7 +392,7 @@ private fun PreferredOcrLanguageChip(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PreferredOcrLanguageBottomSheet(
     selectedLanguage: OcrScanLanguage,
@@ -415,8 +411,7 @@ private fun PreferredOcrLanguageBottomSheet(
                 style = MaterialTheme.typography.titleMedium,
                 color = Color(0xFF172027),
             )
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            Column(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 OcrScanLanguage.entries.forEach { language ->
@@ -429,9 +424,8 @@ private fun PreferredOcrLanguageBottomSheet(
                             contentColor = if (selected) Color.White else Color(0xFF24313A),
                         ),
                         modifier = Modifier
-                            .height(38.dp)
-                            .widthIn(min = 112.dp)
-                            .defaultMinSize(minWidth = 0.dp, minHeight = 0.dp),
+                            .fillMaxWidth()
+                            .height(42.dp),
                         contentPadding = ButtonDefaults.TextButtonWithIconContentPadding,
                     ) {
                         Text(
