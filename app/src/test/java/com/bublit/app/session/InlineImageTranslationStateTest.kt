@@ -95,6 +95,36 @@ class InlineImageTranslationStateTest {
     }
 
     @Test
+    fun refreshCurrentPageRequeuesAlreadyTranslatedImagesForReanalysis() {
+        val state = InlineImageTranslationState().discoverImages(
+            enabled = true,
+            candidates = listOf(
+                ImageCandidate("https://example.com/page-1.jpg", 1080, 1600, top = 120),
+            ),
+        ).complete(
+            imageUrl = "https://example.com/page-1.jpg",
+            translatedImageUri = "data:image/png;base64,AQID",
+            acceptedBlocks = 2,
+            rejectedBlocks = 3,
+        )
+
+        val refreshed = state.refreshCurrentPage()
+
+        assertEquals(listOf("https://example.com/page-1.jpg"), refreshed.pendingImageUrls)
+        assertEquals(emptyMap<String, String>(), refreshed.translatedImageUris)
+        assertEquals(0, refreshed.debugSummary.acceptedBlocks)
+        assertEquals(0, refreshed.debugSummary.rejectedBlocks)
+    }
+
+    @Test
+    fun refreshCurrentPageWithoutImageCandidatesKeepsQueueEmpty() {
+        val refreshed = InlineImageTranslationState().refreshCurrentPage()
+
+        assertEquals(emptyList<String>(), refreshed.pendingImageUrls)
+        assertEquals(emptyMap<String, String>(), refreshed.translatedImageUris)
+    }
+
+    @Test
     fun completedImageStoresDebugTranslationCounts() {
         val state = InlineImageTranslationState().discoverImages(
             enabled = true,

@@ -2,6 +2,9 @@ package com.bublit.app.web
 
 import android.annotation.SuppressLint
 import android.graphics.Bitmap
+import android.graphics.Color
+import android.view.ViewGroup
+import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
@@ -15,6 +18,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.bublit.app.domain.ImageCandidate
 import java.io.ByteArrayInputStream
 import java.util.concurrent.atomic.AtomicReference
@@ -28,12 +32,14 @@ fun BrowserWebView(
     translatedImageUris: Map<String, String>,
     modifier: Modifier = Modifier,
     onWebViewReady: (WebView) -> Unit,
+    onRefreshRequested: () -> Unit,
     onPageStarted: (String) -> Unit,
     onPageFinished: (String, List<ImageCandidate>, Boolean, Boolean, Boolean) -> Unit,
 ) {
     val extractor = remember { WebImageExtractor() }
     val adBlocker = remember { WebAdBlocker() }
     val currentImageTranslationEnabled by rememberUpdatedState(imageTranslationEnabled)
+    val currentOnRefreshRequested by rememberUpdatedState(onRefreshRequested)
     val currentOnPageStarted by rememberUpdatedState(onPageStarted)
     val currentOnPageFinished by rememberUpdatedState(onPageFinished)
     var handledScanRequestId by remember { mutableIntStateOf(-1) }
@@ -42,8 +48,11 @@ fun BrowserWebView(
     AndroidView(
         modifier = modifier,
         factory = { context ->
-            WebView(context).apply {
-                val currentPageUrl = AtomicReference<String?>(url)
+            val currentPageUrl = AtomicReference<String?>(url)
+            val refreshLayout = SwipeRefreshLayout(context).apply {
+                setColorSchemeColors(Color.rgb(37, 104, 111))
+            }
+            val webView = WebView(context).apply {
                 settings.javaScriptEnabled = true
                 settings.domStorageEnabled = true
                 settings.loadWithOverviewMode = true
@@ -77,6 +86,7 @@ fun BrowserWebView(
                     }
 
                     override fun onPageFinished(view: WebView, loadedUrl: String) {
+                        refreshLayout.isRefreshing = false
                         currentPageUrl.set(loadedUrl)
                         if (currentImageTranslationEnabled) {
                             view.postDelayed(
@@ -94,11 +104,18 @@ fun BrowserWebView(
                         }
                     }
                 }
-                onWebViewReady(this)
-                loadUrl(url)
             }
+            refreshLayout.addView(webView, ViewGroup.LayoutParams(MATCH_PARENT, MATCH_PARENT))
+            refreshLayout.setOnRefreshListener {
+                currentOnRefreshRequested()
+                webView.reload()
+            }
+            onWebViewReady(webView)
+            webView.loadUrl(url)
+            refreshLayout
         },
-        update = { webView ->
+        update = { refreshLayout ->
+            val webView = refreshLayout.getChildAt(0) as WebView
             if (webView.url != url && url.isNotBlank()) {
                 webView.loadUrl(url)
             }

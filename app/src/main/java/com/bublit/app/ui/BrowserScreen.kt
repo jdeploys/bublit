@@ -76,6 +76,7 @@ fun BrowserScreen(
     onUrlInputChange: (String) -> Unit,
     onActiveUrlChange: (String) -> Unit,
     onNavigate: () -> Unit,
+    onRefreshCurrentPage: () -> Unit,
     onImageTranslationEnabledChange: (Boolean) -> Unit,
     onStatusChange: (String) -> Unit,
     onPreferredOcrLanguageChange: (OcrScanLanguage) -> Unit,
@@ -136,6 +137,9 @@ fun BrowserScreen(
                 translatedImageUris = translatedImageUris,
                 modifier = Modifier.fillMaxSize(),
                 onWebViewReady = { webView = it },
+                onRefreshRequested = {
+                    onRefreshCurrentPage()
+                },
                 onPageStarted = { url ->
                     isLoading = true
                     onActiveUrlChange(url)

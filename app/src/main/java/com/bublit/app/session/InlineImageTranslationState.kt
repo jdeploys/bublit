@@ -91,6 +91,8 @@ data class InlineImageTranslationState(
         )
     }
 
+    fun refreshCurrentPage(): InlineImageTranslationState = restart()
+
     fun clear(): InlineImageTranslationState = InlineImageTranslationState()
 }
 

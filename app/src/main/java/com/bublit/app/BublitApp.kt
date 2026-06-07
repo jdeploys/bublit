@@ -104,6 +104,18 @@ fun BublitApp(modifier: Modifier = Modifier) {
             onUrlInputChange = { urlInput = it },
             onActiveUrlChange = { loadedUrl = it },
             onNavigate = ::navigateToUrl,
+            onRefreshCurrentPage = {
+                inlineTranslationState = if (isImageTranslationEnabled) {
+                    inlineTranslationState.refreshCurrentPage()
+                } else {
+                    inlineTranslationState.clear()
+                }
+                extractionStatus = if (isImageTranslationEnabled) {
+                    "Refreshing page and reanalyzing images..."
+                } else {
+                    "Refreshing page..."
+                }
+            },
             onImageTranslationEnabledChange = { enabled ->
                 isImageTranslationEnabled = enabled
                 if (!enabled) {
