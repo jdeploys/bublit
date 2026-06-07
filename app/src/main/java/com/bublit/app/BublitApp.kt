@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import com.bublit.app.domain.ImageCandidate
 import com.bublit.app.pipeline.ImageProcessingService
+import com.bublit.app.session.BrowserSessionState
 import com.bublit.app.ui.BrowserScreen
 import com.bublit.app.ui.ImageProcessingStage
 import com.bublit.app.ui.ReaderImageItem
@@ -31,9 +32,18 @@ fun BublitApp(modifier: Modifier = Modifier) {
     val imageProcessingService = remember(context) {
         ImageProcessingService(context.applicationContext)
     }
+    val browserSessionStore = remember(context) {
+        context.getSharedPreferences("browser_session", android.content.Context.MODE_PRIVATE)
+    }
+    val initialBrowserSession = remember(browserSessionStore) {
+        BrowserSessionState.restore(
+            savedPageUrl = browserSessionStore.getString(BROWSER_SESSION_PAGE_URL, null),
+            savedAddressText = browserSessionStore.getString(BROWSER_SESSION_ADDRESS_TEXT, null),
+        )
+    }
     var currentScreen by rememberSaveable { mutableStateOf(BublitScreen.Browser) }
-    var urlInput by rememberSaveable { mutableStateOf("https://www.google.com") }
-    var loadedUrl by rememberSaveable { mutableStateOf("https://www.google.com") }
+    var urlInput by rememberSaveable { mutableStateOf(initialBrowserSession.addressText) }
+    var loadedUrl by rememberSaveable { mutableStateOf(initialBrowserSession.pageUrl) }
     var extractionStatus by rememberSaveable { mutableStateOf("") }
     var readerMode by rememberSaveable { mutableStateOf(ReaderMode.Continuous) }
     var showTranslated by rememberSaveable { mutableStateOf(true) }
@@ -41,6 +51,13 @@ fun BublitApp(modifier: Modifier = Modifier) {
     var readerItems by remember { mutableStateOf(emptyList<ReaderImageItem>()) }
     var imageCandidates by remember { mutableStateOf(emptyList<ImageCandidate>()) }
     var isImageTranslationEnabled by rememberSaveable { mutableStateOf(false) }
+
+    LaunchedEffect(loadedUrl, urlInput) {
+        browserSessionStore.edit()
+            .putString(BROWSER_SESSION_PAGE_URL, loadedUrl)
+            .putString(BROWSER_SESSION_ADDRESS_TEXT, urlInput)
+            .apply()
+    }
 
     LaunchedEffect(currentScreen, loadedUrl) {
         if (currentScreen != BublitScreen.Reader) return@LaunchedEffect
@@ -170,6 +187,9 @@ fun BublitApp(modifier: Modifier = Modifier) {
         }
     }
 }
+
+private const val BROWSER_SESSION_PAGE_URL = "page_url"
+private const val BROWSER_SESSION_ADDRESS_TEXT = "address_text"
 
 private fun sampleReaderItems(sourceUrl: String): List<ReaderImageItem> = listOf(
     ReaderImageItem(
