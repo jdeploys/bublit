@@ -1,6 +1,7 @@
 package com.bublit.app.ui
 
 import android.webkit.WebView
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -86,6 +87,10 @@ fun BrowserScreen(
     var canGoForward by remember { mutableStateOf(false) }
     var imageScanRequestId by remember { mutableIntStateOf(0) }
     var showDebugSummary by remember { mutableStateOf(false) }
+
+    BackHandler(enabled = canGoBack) {
+        webView?.goBack()
+    }
 
     Scaffold(
         modifier = modifier,

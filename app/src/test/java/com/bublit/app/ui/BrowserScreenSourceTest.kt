@@ -27,6 +27,22 @@ class BrowserScreenSourceTest {
         assertTrue(chipSource.contains(".height(30.dp)"))
     }
 
+    @Test
+    fun hardwareBackButtonNavigatesWebViewHistoryWhenAvailable() {
+        val source = browserScreenSource()
+
+        assertTrue(source.contains("BackHandler(enabled = canGoBack)"))
+        assertTrue(source.contains("webView?.goBack()"))
+    }
+
+    @Test
+    fun hardwareBackButtonKeepsDefaultBehaviorWhenWebViewCannotGoBack() {
+        val source = browserScreenSource()
+
+        assertFalse(source.contains("BackHandler(enabled = true)"))
+        assertFalse(source.contains("BackHandler {"))
+    }
+
     private fun browserScreenSource(): String {
         return String(
             Files.readAllBytes(Paths.get("src/main/java/com/bublit/app/ui/BrowserScreen.kt")),
