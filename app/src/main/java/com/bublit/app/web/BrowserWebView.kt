@@ -3,6 +3,7 @@ package com.bublit.app.web
 import android.annotation.SuppressLint
 import android.graphics.Bitmap
 import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.runtime.Composable
@@ -15,6 +16,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 import com.bublit.app.domain.ImageCandidate
+import java.io.ByteArrayInputStream
+import java.util.concurrent.atomic.AtomicReference
 
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
@@ -29,6 +32,7 @@ fun BrowserWebView(
     onPageFinished: (String, List<ImageCandidate>, Boolean, Boolean, Boolean) -> Unit,
 ) {
     val extractor = remember { WebImageExtractor() }
+    val adBlocker = remember { WebAdBlocker() }
     val currentImageTranslationEnabled by rememberUpdatedState(imageTranslationEnabled)
     val currentOnPageStarted by rememberUpdatedState(onPageStarted)
     val currentOnPageFinished by rememberUpdatedState(onPageFinished)
@@ -39,6 +43,7 @@ fun BrowserWebView(
         modifier = modifier,
         factory = { context ->
             WebView(context).apply {
+                val currentPageUrl = AtomicReference<String?>(url)
                 settings.javaScriptEnabled = true
                 settings.domStorageEnabled = true
                 settings.loadWithOverviewMode = true
@@ -50,11 +55,29 @@ fun BrowserWebView(
                         return false
                     }
 
+                    override fun shouldInterceptRequest(
+                        view: WebView,
+                        request: WebResourceRequest,
+                    ): WebResourceResponse? {
+                        if (
+                            adBlocker.shouldBlock(
+                                pageUrl = currentPageUrl.get(),
+                                requestUrl = request.url.toString(),
+                                isForMainFrame = request.isForMainFrame,
+                            )
+                        ) {
+                            return emptyBlockedResourceResponse()
+                        }
+                        return super.shouldInterceptRequest(view, request)
+                    }
+
                     override fun onPageStarted(view: WebView, loadedUrl: String, favicon: Bitmap?) {
+                        currentPageUrl.set(loadedUrl)
                         currentOnPageStarted(loadedUrl)
                     }
 
                     override fun onPageFinished(view: WebView, loadedUrl: String) {
+                        currentPageUrl.set(loadedUrl)
                         if (currentImageTranslationEnabled) {
                             view.postDelayed(
                                 { scanPageImages(view, extractor, loadedUrl, currentOnPageFinished) },
@@ -103,6 +126,14 @@ fun BrowserWebView(
                 )
             }
         },
+    )
+}
+
+private fun emptyBlockedResourceResponse(): WebResourceResponse {
+    return WebResourceResponse(
+        "text/plain",
+        "utf-8",
+        ByteArrayInputStream(ByteArray(0)),
     )
 }
 
