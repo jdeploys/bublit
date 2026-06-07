@@ -71,3 +71,7 @@ You can also open this folder in Android Studio and run the `app` configuration.
 5. If no candidates are found, the reader shows local sample panels so the UI remains testable.
 
 The next implementation step is to connect downloaded image bitmaps to the OCR, speech-bubble classifier, translation engine, and hybrid completed-bitmap cache.
+
+## License
+
+MIT
