@@ -65,12 +65,12 @@ class ImageProcessingService(
         preferredLanguage: OcrScanLanguage,
     ): List<OcrTextBlock> {
         val primaryBlocks = recognizeBlocksForLanguage(bitmap, preferredLanguage)
-        if (primaryBlocks.isNotEmpty()) return primaryBlocks.deduplicateOcrBlocks()
+        if (primaryBlocks.isNotEmpty()) return deduplicateOcrBlocks(primaryBlocks)
 
         val fallbackBlocks = ocrScanOrder(preferredLanguage)
             .drop(1)
             .flatMap { language -> recognizeBlocksForLanguage(bitmap, language) }
-        return fallbackBlocks.deduplicateOcrBlocks()
+        return deduplicateOcrBlocks(fallbackBlocks)
     }
 
     private suspend fun recognizeBlocksForLanguage(
@@ -84,12 +84,6 @@ class ImageProcessingService(
                 .getOrDefault(emptyList())
             OcrScanLanguage.Japanese -> runCatching { ocrEngine.recognizeJapanese(bitmap).toOcrBlocks(bitmap) }
                 .getOrDefault(emptyList())
-        }
-    }
-
-    private fun List<OcrTextBlock>.deduplicateOcrBlocks(): List<OcrTextBlock> {
-        return distinctBy { block ->
-            "${block.text}:${block.bounds.left}:${block.bounds.top}:${block.bounds.width}:${block.bounds.height}"
         }
     }
 
