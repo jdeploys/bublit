@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
 
 enum class ReaderMode(
     val label: String,
@@ -52,6 +53,7 @@ data class ReaderImageItem(
     val id: String,
     val title: String,
     val sourceUrl: String,
+    val imageUrl: String? = null,
     val originalCaption: String,
     val translatedCaption: String,
     val stage: ImageProcessingStage,
@@ -189,7 +191,7 @@ fun ReaderImageCard(
                 )
             }
 
-            ComicImagePlaceholder(
+            ComicImagePreview(
                 item = item,
                 showTranslated = showTranslated,
             )
@@ -198,6 +200,51 @@ fun ReaderImageCard(
                 progress = { item.stage.progress },
                 modifier = Modifier.fillMaxWidth(),
             )
+        }
+    }
+}
+
+@Composable
+private fun ComicImagePreview(
+    item: ReaderImageItem,
+    showTranslated: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    if (item.imageUrl.isNullOrBlank()) {
+        ComicImagePlaceholder(
+            item = item,
+            showTranslated = showTranslated,
+            modifier = modifier,
+        )
+    } else {
+        Box(
+            modifier = modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(6.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant),
+        ) {
+            AsyncImage(
+                model = item.imageUrl,
+                contentDescription = item.title,
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            if (showTranslated) {
+                Surface(
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(14.dp),
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                    shape = RoundedCornerShape(8.dp),
+                ) {
+                    Text(
+                        text = item.translatedCaption,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+            }
         }
     }
 }

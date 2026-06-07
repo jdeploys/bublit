@@ -15,9 +15,11 @@ import com.bublit.app.ui.ImageProcessingStage
 import com.bublit.app.ui.ReaderImageItem
 import com.bublit.app.ui.ReaderMode
 import com.bublit.app.ui.ReaderScreen
+import com.bublit.app.ui.WebLoadingScreen
 
 private enum class BublitScreen {
     Home,
+    Loading,
     Reader,
 }
 
@@ -34,13 +36,11 @@ fun BublitApp(modifier: Modifier = Modifier) {
     var focusedIndex by rememberSaveable { mutableIntStateOf(0) }
     var readerItems by remember { mutableStateOf(emptyList<ReaderImageItem>()) }
 
-    fun loadSampleReader() {
+    fun beginPageLoad() {
         val normalizedUrl = urlInput.trim().ifBlank { "https://example.com/webtoon/episode-1" }
         loadedUrl = normalizedUrl
-        readerItems = sampleReaderItems(normalizedUrl)
-        focusedIndex = 0
-        extractionStatus = "Sample extraction ready: 3 DOM image candidates queued with fake OCR and translation states."
-        currentScreen = BublitScreen.Reader
+        extractionStatus = "Loading page..."
+        currentScreen = BublitScreen.Loading
     }
 
     Surface(modifier = modifier.fillMaxSize()) {
@@ -50,8 +50,40 @@ fun BublitApp(modifier: Modifier = Modifier) {
                 extractionStatus = extractionStatus,
                 canOpenReader = readerItems.isNotEmpty(),
                 onUrlInputChange = { urlInput = it },
-                onLoadClick = ::loadSampleReader,
+                onLoadClick = ::beginPageLoad,
                 onOpenReaderClick = { currentScreen = BublitScreen.Reader },
+            )
+
+            BublitScreen.Loading -> WebLoadingScreen(
+                url = loadedUrl.ifBlank { urlInput },
+                status = extractionStatus,
+                onBackClick = { currentScreen = BublitScreen.Home },
+                onStatusChange = { extractionStatus = it },
+                onImagesExtracted = { candidates ->
+                    readerItems = if (candidates.isEmpty()) {
+                        sampleReaderItems(loadedUrl.ifBlank { urlInput })
+                    } else {
+                        candidates.mapIndexed { index, candidate ->
+                            ReaderImageItem(
+                                id = "dom-$index",
+                                title = "Image ${index + 1}",
+                                sourceUrl = candidate.url,
+                                imageUrl = candidate.url,
+                                originalCaption = "Detected speech bubble",
+                                translatedCaption = "로컬 번역 준비 중",
+                                stage = ImageProcessingStage.Queued,
+                                paletteColor = samplePalette(index),
+                            )
+                        }
+                    }
+                    focusedIndex = 0
+                    extractionStatus = if (candidates.isEmpty()) {
+                        "No large DOM comic images found. Showing local sample reader."
+                    } else {
+                        "Extracted ${candidates.size} DOM image candidates."
+                    }
+                    currentScreen = BublitScreen.Reader
+                },
             )
 
             BublitScreen.Reader -> ReaderScreen(
@@ -104,3 +136,8 @@ private fun sampleReaderItems(sourceUrl: String): List<ReaderImageItem> = listOf
         paletteColor = 0xFF7C5265,
     ),
 )
+
+private fun samplePalette(index: Int): Long {
+    val colors = listOf(0xFF25686F, 0xFF7A5B2E, 0xFF7C5265, 0xFF4E6740)
+    return colors[index % colors.size]
+}
