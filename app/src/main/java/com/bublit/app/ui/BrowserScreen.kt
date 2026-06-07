@@ -172,9 +172,9 @@ private fun BrowserTopBar(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(58.dp)
-                    .padding(horizontal = 8.dp),
+                    .padding(start = 6.dp, end = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                horizontalArrangement = Arrangement.spacedBy(0.dp),
             ) {
                 if (!isAddressFocused) {
                     BrowserGlyphButton(
@@ -318,13 +318,13 @@ private fun BrowserGlyphButton(
         onClick = onClick,
         enabled = enabled,
         modifier = Modifier
-            .size(40.dp)
+            .size(30.dp)
             .background(Color.Transparent, CircleShape),
     ) {
         Text(
             text = label,
             color = if (enabled) Color(0xFF24313A) else Color(0xFFB4BDC4),
-            fontSize = if (label.length == 1) 18.sp else 13.sp,
+            fontSize = if (label.length == 1) 15.sp else 12.sp,
             maxLines = 1,
         )
     }
