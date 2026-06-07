@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.sp
 import com.bublit.app.R
 import com.bublit.app.domain.ImageCandidate
 import com.bublit.app.domain.OcrScanLanguage
+import com.bublit.app.session.ImageTranslationDebugSummary
 import com.bublit.app.session.InlineImageTranslationProgress
 import com.bublit.app.web.BrowserWebView
 
@@ -61,6 +62,8 @@ fun BrowserScreen(
     imageCandidateCount: Int,
     translatedImageUris: Map<String, String>,
     translationProgress: InlineImageTranslationProgress,
+    debugSummary: ImageTranslationDebugSummary,
+    isDebugBuild: Boolean,
     preferredOcrLanguage: OcrScanLanguage,
     onUrlInputChange: (String) -> Unit,
     onActiveUrlChange: (String) -> Unit,
@@ -77,6 +80,7 @@ fun BrowserScreen(
     var canGoBack by remember { mutableStateOf(false) }
     var canGoForward by remember { mutableStateOf(false) }
     var imageScanRequestId by remember { mutableIntStateOf(0) }
+    var showDebugSummary by remember { mutableStateOf(false) }
 
     Scaffold(
         modifier = modifier,
@@ -162,6 +166,63 @@ fun BrowserScreen(
                     trackColor = Color(0x3325686F),
                 )
             }
+            if (debugSummary.isVisibleInBuild(isDebugBuild)) {
+                TranslationDebugButton(
+                    summary = debugSummary,
+                    expanded = showDebugSummary,
+                    onClick = { showDebugSummary = !showDebugSummary },
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(end = 12.dp, bottom = 12.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TranslationDebugButton(
+    summary: ImageTranslationDebugSummary,
+    expanded: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.End,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        if (expanded) {
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = Color(0xE612171C),
+                contentColor = Color.White,
+                shadowElevation = 4.dp,
+            ) {
+                Text(
+                    text = "이미지: 번역 ${summary.translatedImages}개 / 실패 ${summary.failedImages}개\n" +
+                        "OCR: 말풍선 ${summary.acceptedBlocks}개 / 제외 ${summary.rejectedBlocks}개",
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                    fontSize = 12.sp,
+                    lineHeight = 16.sp,
+                )
+            }
+        }
+        TextButton(
+            onClick = onClick,
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.textButtonColors(
+                containerColor = Color(0xCC12171C),
+                contentColor = Color.White,
+            ),
+            modifier = Modifier.height(32.dp),
+            contentPadding = ButtonDefaults.TextButtonContentPadding,
+        ) {
+            Text(
+                text = "DEBUG",
+                fontSize = 12.sp,
+                maxLines = 1,
+            )
         }
     }
 }

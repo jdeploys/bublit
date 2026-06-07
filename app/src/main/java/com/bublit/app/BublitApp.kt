@@ -11,10 +11,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import com.bublit.app.BuildConfig
 import com.bublit.app.domain.OcrScanLanguage
 import com.bublit.app.pipeline.ImageProcessingService
 import com.bublit.app.session.BrowserSessionState
 import com.bublit.app.session.InlineImageTranslationState
+import com.bublit.app.session.imageTranslationStatusText
 import com.bublit.app.ui.BrowserScreen
 
 @Composable
@@ -54,18 +56,20 @@ fun BublitApp(modifier: Modifier = Modifier) {
         }
 
         inlineTranslationState = processed.fold(
-            onSuccess = { result -> inlineTranslationState.complete(imageUrl, result.renderedImageUri) },
+            onSuccess = { result ->
+                inlineTranslationState.complete(
+                    imageUrl = imageUrl,
+                    translatedImageUri = result.renderedImageUri,
+                    acceptedBlocks = result.acceptedBlocks,
+                    rejectedBlocks = result.rejectedBlocks,
+                )
+            },
             onFailure = { inlineTranslationState.fail(imageUrl) },
         )
 
         val translatedCount = inlineTranslationState.translatedImageUris.size
         val failedCount = inlineTranslationState.failedImageUrls.size
-        extractionStatus = when {
-            translatedCount > 0 && failedCount > 0 -> "$translatedCount translated, $failedCount failed"
-            translatedCount > 0 -> "$translatedCount images translated"
-            failedCount > 0 -> "$failedCount images failed"
-            else -> ""
-        }
+        extractionStatus = imageTranslationStatusText(translatedCount, failedCount)
     }
 
     fun normalizeUrl(rawUrl: String): String {
@@ -94,6 +98,8 @@ fun BublitApp(modifier: Modifier = Modifier) {
             imageCandidateCount = inlineTranslationState.candidates.size,
             translatedImageUris = inlineTranslationState.translatedImageUris,
             translationProgress = inlineTranslationState.progress,
+            debugSummary = inlineTranslationState.debugSummary,
+            isDebugBuild = BuildConfig.DEBUG,
             preferredOcrLanguage = preferredOcrLanguage,
             onUrlInputChange = { urlInput = it },
             onActiveUrlChange = { loadedUrl = it },

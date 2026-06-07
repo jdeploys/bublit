@@ -2,8 +2,8 @@ package com.bublit.app.domain
 
 class SpeechBubbleClassifier(
     private val minConfidence: Double = 0.5,
-    private val minBackgroundLuma: Double = 0.72,
-    private val minContrast: Double = 0.45,
+    private val minBackgroundLuma: Double = 0.58,
+    private val minContrast: Double = 0.30,
     private val minWidthPx: Int = 32,
     private val minHeightPx: Int = 20,
 ) {

@@ -21,6 +21,19 @@ class SpeechBubbleClassifierTest {
     }
 
     @Test
+    fun tonedSpeechBubbleTextIsAccepted() {
+        val block = OcrTextBlock(
+            text = "Wait a second.",
+            bounds = BubbleBounds(left = 120, top = 220, width = 220, height = 72),
+            backgroundLuma = 0.62,
+            foregroundLuma = 0.08,
+            confidence = 0.88,
+        )
+
+        assertTrue(classifier.isSpeechBubbleText(block))
+    }
+
+    @Test
     fun backgroundEffectTextIsRejected() {
         val block = OcrTextBlock(
             text = "BOOM",

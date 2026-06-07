@@ -7,6 +7,7 @@ data class InlineImageTranslationState(
     val pendingImageUrls: List<String> = emptyList(),
     val translatedImageUris: Map<String, String> = emptyMap(),
     val failedImageUrls: Set<String> = emptySet(),
+    val debugResults: Map<String, ImageTranslationDebugResult> = emptyMap(),
 ) {
     val progress: InlineImageTranslationProgress
         get() {
@@ -21,6 +22,16 @@ data class InlineImageTranslationState(
                 totalCount = totalCount,
                 completedCount = completedCount,
                 fraction = if (totalCount == 0) 0f else completedCount.toFloat() / totalCount.toFloat(),
+            )
+        }
+
+    val debugSummary: ImageTranslationDebugSummary
+        get() {
+            return ImageTranslationDebugSummary(
+                translatedImages = debugResults.size,
+                failedImages = failedImageUrls.size,
+                acceptedBlocks = debugResults.values.sumOf { it.acceptedBlocks },
+                rejectedBlocks = debugResults.values.sumOf { it.rejectedBlocks },
             )
         }
 
@@ -42,11 +53,22 @@ data class InlineImageTranslationState(
         return copy(pendingImageUrls = pendingImageUrls - imageUrl)
     }
 
-    fun complete(imageUrl: String, translatedImageUri: String): InlineImageTranslationState {
+    fun complete(
+        imageUrl: String,
+        translatedImageUri: String,
+        acceptedBlocks: Int = 0,
+        rejectedBlocks: Int = 0,
+    ): InlineImageTranslationState {
         return copy(
             pendingImageUrls = pendingImageUrls - imageUrl,
             translatedImageUris = translatedImageUris + (imageUrl to translatedImageUri),
             failedImageUrls = failedImageUrls - imageUrl,
+            debugResults = debugResults + (
+                imageUrl to ImageTranslationDebugResult(
+                    acceptedBlocks = acceptedBlocks,
+                    rejectedBlocks = rejectedBlocks,
+                )
+                ),
         )
     }
 
@@ -54,6 +76,7 @@ data class InlineImageTranslationState(
         return copy(
             pendingImageUrls = pendingImageUrls - imageUrl,
             failedImageUrls = failedImageUrls + imageUrl,
+            debugResults = debugResults - imageUrl,
         )
     }
 
@@ -64,6 +87,7 @@ data class InlineImageTranslationState(
                 .distinct(),
             translatedImageUris = emptyMap(),
             failedImageUrls = emptySet(),
+            debugResults = emptyMap(),
         )
     }
 
@@ -76,3 +100,22 @@ data class InlineImageTranslationProgress(
     val completedCount: Int,
     val fraction: Float,
 )
+
+data class ImageTranslationDebugResult(
+    val acceptedBlocks: Int,
+    val rejectedBlocks: Int,
+)
+
+data class ImageTranslationDebugSummary(
+    val translatedImages: Int,
+    val failedImages: Int,
+    val acceptedBlocks: Int,
+    val rejectedBlocks: Int,
+) {
+    val hasResults: Boolean
+        get() = translatedImages > 0 || failedImages > 0
+
+    fun isVisibleInBuild(isDebugBuild: Boolean): Boolean {
+        return isDebugBuild && hasResults
+    }
+}

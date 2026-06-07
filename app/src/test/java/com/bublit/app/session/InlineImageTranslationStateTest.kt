@@ -93,4 +93,39 @@ class InlineImageTranslationStateTest {
         assertEquals(listOf("https://example.com/page-1.jpg"), restarted.pendingImageUrls)
         assertEquals(emptyMap<String, String>(), restarted.translatedImageUris)
     }
+
+    @Test
+    fun completedImageStoresDebugTranslationCounts() {
+        val state = InlineImageTranslationState().discoverImages(
+            enabled = true,
+            candidates = listOf(
+                ImageCandidate("https://example.com/page-1.jpg", 1080, 1600, top = 120),
+            ),
+        ).complete(
+            imageUrl = "https://example.com/page-1.jpg",
+            translatedImageUri = "data:image/png;base64,AQID",
+            acceptedBlocks = 1,
+            rejectedBlocks = 23,
+        )
+
+        val summary = state.debugSummary
+
+        assertEquals(true, summary.hasResults)
+        assertEquals(1, summary.translatedImages)
+        assertEquals(1, summary.acceptedBlocks)
+        assertEquals(23, summary.rejectedBlocks)
+    }
+
+    @Test
+    fun debugSummaryIsOnlyVisibleInDebugBuilds() {
+        val summary = ImageTranslationDebugSummary(
+            translatedImages = 1,
+            failedImages = 0,
+            acceptedBlocks = 1,
+            rejectedBlocks = 23,
+        )
+
+        assertEquals(true, summary.isVisibleInBuild(isDebugBuild = true))
+        assertEquals(false, summary.isVisibleInBuild(isDebugBuild = false))
+    }
 }

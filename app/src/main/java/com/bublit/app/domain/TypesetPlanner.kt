@@ -9,15 +9,16 @@ class TypesetPlanner(
 ) {
     fun plan(bubble: AcceptedBubbleText, translatedText: String): TextRenderPlan {
         val normalizedText = translatedText.trim().ifBlank { bubble.originalText.trim() }
+        val renderBounds = bubble.bounds.expandedForTypesetting()
 
         for (fontSize in maxFontSizePx downTo minFontSizePx) {
-            val lines = wrapText(normalizedText, bubble.bounds.width, fontSize)
+            val lines = wrapText(normalizedText, renderBounds.width, fontSize)
             val metrics = estimateMetrics(lines, fontSize)
 
-            if (metrics.width <= bubble.bounds.width && metrics.height <= bubble.bounds.height) {
+            if (metrics.width <= renderBounds.width && metrics.height <= renderBounds.height) {
                 return TextRenderPlan(
                     text = normalizedText,
-                    bounds = bubble.bounds,
+                    bounds = renderBounds,
                     lines = lines,
                     fontSizePx = fontSize,
                     estimatedWidthPx = metrics.width,
@@ -26,15 +27,15 @@ class TypesetPlanner(
             }
         }
 
-        val lines = wrapText(normalizedText, bubble.bounds.width, minFontSizePx)
+        val lines = wrapText(normalizedText, renderBounds.width, minFontSizePx)
         val metrics = estimateMetrics(lines, minFontSizePx)
         return TextRenderPlan(
             text = normalizedText,
-            bounds = bubble.bounds,
+            bounds = renderBounds,
             lines = lines,
             fontSizePx = minFontSizePx,
-            estimatedWidthPx = minOf(metrics.width, bubble.bounds.width),
-            estimatedHeightPx = minOf(metrics.height, bubble.bounds.height),
+            estimatedWidthPx = minOf(metrics.width, renderBounds.width),
+            estimatedHeightPx = minOf(metrics.height, renderBounds.height),
         )
     }
 
@@ -96,6 +97,17 @@ class TypesetPlanner(
 
     private fun estimatedCharWidth(fontSizePx: Int): Double {
         return fontSizePx * AverageGlyphWidthMultiplier
+    }
+
+    private fun BubbleBounds.expandedForTypesetting(): BubbleBounds {
+        val horizontalPadding = maxOf(14, ceil(width * 0.28).toInt())
+        val verticalPadding = maxOf(12, ceil(height * 0.55).toInt())
+        return BubbleBounds(
+            left = left - horizontalPadding,
+            top = top - verticalPadding,
+            width = width + horizontalPadding * 2,
+            height = height + verticalPadding * 2,
+        )
     }
 
     private data class TextMetrics(
