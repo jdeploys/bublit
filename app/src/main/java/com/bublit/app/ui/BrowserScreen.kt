@@ -2,6 +2,7 @@ package com.bublit.app.ui
 
 import android.webkit.WebView
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,8 +13,11 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
@@ -368,21 +372,23 @@ private fun PreferredOcrLanguageChip(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    TextButton(
-        onClick = onClick,
+    Surface(
         shape = RoundedCornerShape(14.dp),
-        colors = ButtonDefaults.textButtonColors(
-            containerColor = Color(0xFF25686F),
-            contentColor = Color.White,
-        ),
-        modifier = modifier.height(28.dp),
-        contentPadding = ButtonDefaults.TextButtonContentPadding,
+        color = Color(0xFF25686F),
+        contentColor = Color.White,
+        modifier = modifier
+            .width(44.dp)
+            .height(30.dp)
+            .clickable(onClick = onClick),
     ) {
-        Text(
-            text = selectedLanguage.shortLabel,
-            fontSize = 12.sp,
-            maxLines = 1,
-        )
+        Box(contentAlignment = Alignment.Center) {
+            Text(
+                text = selectedLanguage.shortLabel,
+                fontSize = 12.sp,
+                lineHeight = 14.sp,
+                maxLines = 1,
+            )
+        }
     }
 }
 
@@ -418,12 +424,16 @@ private fun PreferredOcrLanguageBottomSheet(
                             containerColor = if (selected) Color(0xFF25686F) else Color(0xFFEFF3F5),
                             contentColor = if (selected) Color.White else Color(0xFF24313A),
                         ),
-                        modifier = Modifier.height(36.dp),
-                        contentPadding = ButtonDefaults.TextButtonContentPadding,
+                        modifier = Modifier
+                            .height(38.dp)
+                            .widthIn(min = 112.dp)
+                            .defaultMinSize(minWidth = 0.dp, minHeight = 0.dp),
+                        contentPadding = ButtonDefaults.TextButtonWithIconContentPadding,
                     ) {
                         Text(
                             text = "${language.shortLabel} · ${language.displayLabel}",
                             fontSize = 13.sp,
+                            lineHeight = 15.sp,
                             maxLines = 1,
                         )
                     }
