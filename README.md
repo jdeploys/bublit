@@ -6,6 +6,11 @@ Bublit is an Android web-comic translation reader prototype. It loads a web page
 - URL input and WebView image extraction.
 - Reader mode with original/translated toggle.
 - Real extracted image display through Coil.
+- Image URL download into Android Bitmaps.
+- ML Kit OCR over downloaded images.
+- Speech-bubble-only filtering for bright dialogue regions.
+- ML Kit local translation with fake fallback when models fail or text is unsupported.
+- Typeset-style rendered image cache written under the app cache directory.
 - Pure Kotlin domain pipeline tests for image filtering, language detection, speech bubble classification, and typeset planning.
 - ML Kit OCR and translation adapters behind local-first interfaces.
 - Fake OCR/translation fallback data so the app is runnable before model downloads are wired into the UI flow.
@@ -67,10 +72,11 @@ You can also open this folder in Android Studio and run the `app` configuration.
 1. Enter a page URL.
 2. Tap `Load`.
 3. Bublit loads the page in a WebView and extracts large DOM image candidates.
-4. If candidates are found, the reader displays them.
-5. If no candidates are found, the reader shows local sample panels so the UI remains testable.
+4. If candidates are found, the reader displays them and processes each image in sequence.
+5. Processing downloads each image, runs OCR, filters bright speech-bubble text, translates accepted blocks to Korean, renders a completed typeset bitmap, and swaps the translated view to the cached bitmap.
+6. If no candidates are found, the reader shows local sample panels so the UI remains testable.
 
-The next implementation step is to connect downloaded image bitmaps to the OCR, speech-bubble classifier, translation engine, and hybrid completed-bitmap cache.
+The next implementation step is to improve bubble detection quality with real fixture images and add persistent Room-backed metadata for rendered image reuse across app launches.
 
 ## License
 

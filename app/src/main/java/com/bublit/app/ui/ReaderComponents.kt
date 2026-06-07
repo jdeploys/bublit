@@ -47,6 +47,7 @@ enum class ImageProcessingStage(
     ExtractingText("OCR", 0.48f),
     Translating("Translating", 0.76f),
     Ready("Ready", 1f),
+    Failed("Failed", 1f),
 }
 
 data class ReaderImageItem(
@@ -54,10 +55,13 @@ data class ReaderImageItem(
     val title: String,
     val sourceUrl: String,
     val imageUrl: String? = null,
+    val translatedImageUri: String? = null,
     val originalCaption: String,
     val translatedCaption: String,
     val stage: ImageProcessingStage,
     val paletteColor: Long,
+    val acceptedBlocks: Int = 0,
+    val rejectedBlocks: Int = 0,
 )
 
 @Composable
@@ -200,6 +204,17 @@ fun ReaderImageCard(
                 progress = { item.stage.progress },
                 modifier = Modifier.fillMaxWidth(),
             )
+
+            if (item.acceptedBlocks > 0 || item.rejectedBlocks > 0 || item.stage == ImageProcessingStage.Failed) {
+                Text(
+                    text = when (item.stage) {
+                        ImageProcessingStage.Failed -> item.translatedCaption
+                        else -> "Accepted ${item.acceptedBlocks} speech bubbles, skipped ${item.rejectedBlocks} blocks"
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }
@@ -210,7 +225,13 @@ private fun ComicImagePreview(
     showTranslated: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    if (item.imageUrl.isNullOrBlank()) {
+    val displayImage = if (showTranslated) {
+        item.translatedImageUri ?: item.imageUrl
+    } else {
+        item.imageUrl
+    }
+
+    if (displayImage.isNullOrBlank()) {
         ComicImagePlaceholder(
             item = item,
             showTranslated = showTranslated,
@@ -224,12 +245,12 @@ private fun ComicImagePreview(
                 .background(MaterialTheme.colorScheme.surfaceVariant),
         ) {
             AsyncImage(
-                model = item.imageUrl,
+                model = displayImage,
                 contentDescription = item.title,
                 modifier = Modifier.fillMaxWidth(),
             )
 
-            if (showTranslated) {
+            if (showTranslated && item.translatedImageUri == null) {
                 Surface(
                     modifier = Modifier
                         .align(Alignment.TopStart)

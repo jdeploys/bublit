@@ -3,6 +3,7 @@ package com.bublit.app
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -10,6 +11,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import com.bublit.app.pipeline.ImageProcessingService
 import com.bublit.app.ui.HomeScreen
 import com.bublit.app.ui.ImageProcessingStage
 import com.bublit.app.ui.ReaderImageItem
@@ -25,6 +28,10 @@ private enum class BublitScreen {
 
 @Composable
 fun BublitApp(modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    val imageProcessingService = remember(context) {
+        ImageProcessingService(context.applicationContext)
+    }
     var currentScreen by rememberSaveable { mutableStateOf(BublitScreen.Home) }
     var urlInput by rememberSaveable { mutableStateOf("https://example.com/webtoon/episode-1") }
     var loadedUrl by rememberSaveable { mutableStateOf("") }
@@ -35,6 +42,53 @@ fun BublitApp(modifier: Modifier = Modifier) {
     var showTranslated by rememberSaveable { mutableStateOf(true) }
     var focusedIndex by rememberSaveable { mutableIntStateOf(0) }
     var readerItems by remember { mutableStateOf(emptyList<ReaderImageItem>()) }
+
+    LaunchedEffect(currentScreen, loadedUrl) {
+        if (currentScreen != BublitScreen.Reader) return@LaunchedEffect
+        val processableItems = readerItems.filter { item ->
+            !item.imageUrl.isNullOrBlank() &&
+                item.translatedImageUri == null &&
+                item.stage == ImageProcessingStage.Queued
+        }
+
+        processableItems.forEach { item ->
+            readerItems = readerItems.updateItem(item.id) {
+                it.copy(
+                    stage = ImageProcessingStage.ExtractingText,
+                    translatedCaption = "OCR 처리 중",
+                )
+            }
+            val processed = runCatching {
+                readerItems = readerItems.updateItem(item.id) {
+                    it.copy(
+                        stage = ImageProcessingStage.Translating,
+                        translatedCaption = "로컬 번역 및 식자 생성 중",
+                    )
+                }
+                imageProcessingService.process(requireNotNull(item.imageUrl))
+            }
+
+            readerItems = readerItems.updateItem(item.id) { current ->
+                processed.fold(
+                    onSuccess = { result ->
+                        current.copy(
+                            translatedImageUri = result.renderedImageUri,
+                            translatedCaption = "식자 완료: ${result.acceptedBlocks}개 말풍선",
+                            stage = ImageProcessingStage.Ready,
+                            acceptedBlocks = result.acceptedBlocks,
+                            rejectedBlocks = result.rejectedBlocks,
+                        )
+                    },
+                    onFailure = { error ->
+                        current.copy(
+                            translatedCaption = "처리 실패: ${error.message ?: "unknown error"}",
+                            stage = ImageProcessingStage.Failed,
+                        )
+                    },
+                )
+            }
+        }
+    }
 
     fun beginPageLoad() {
         val normalizedUrl = urlInput.trim().ifBlank { "https://example.com/webtoon/episode-1" }
@@ -140,4 +194,11 @@ private fun sampleReaderItems(sourceUrl: String): List<ReaderImageItem> = listOf
 private fun samplePalette(index: Int): Long {
     val colors = listOf(0xFF25686F, 0xFF7A5B2E, 0xFF7C5265, 0xFF4E6740)
     return colors[index % colors.size]
+}
+
+private fun List<ReaderImageItem>.updateItem(
+    id: String,
+    update: (ReaderImageItem) -> ReaderImageItem,
+): List<ReaderImageItem> {
+    return map { item -> if (item.id == id) update(item) else item }
 }
