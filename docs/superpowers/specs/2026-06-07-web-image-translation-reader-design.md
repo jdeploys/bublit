@@ -2,7 +2,13 @@
 
 ## Summary
 
-Build an Android app that loads a user-provided web page, extracts real image elements from the DOM, and produces a Korean typeset reading view for English and Chinese dialogue inside bright speech bubbles. The app favors translation output quality over browser-like navigation. It does not support canvas-based viewers, script-rendered image composition, general web text translation, background lettering, or sound effects.
+Build Bublit, an Android app that loads a user-provided web page, extracts real image elements from the DOM, and produces a Korean typeset reading view for English and Chinese dialogue inside bright speech bubbles. The app favors translation output quality over browser-like navigation. It does not support canvas-based viewers, script-rendered image composition, general web text translation, background lettering, or sound effects.
+
+## Product Identity
+
+- Product name: Bublit.
+- Android app display name: Bublit.
+- One-line description: A local Korean typesetting reader for English and Chinese web comics.
 
 ## Locked Scope
 
@@ -211,7 +217,7 @@ Visual verification should compare rendered bitmap output for fixture images:
 
 ## Open Decisions
 
-- Exact Android package and project name.
+- Exact Android package name.
 - Whether to use Jetpack Compose from the beginning or start with a simpler native view stack.
 - Korean font choice and whether a bundled font is needed.
 - Whether first-use model downloads should be automatic or require an explicit user confirmation.
