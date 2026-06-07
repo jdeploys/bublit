@@ -14,10 +14,12 @@ import androidx.compose.ui.platform.LocalContext
 import com.bublit.app.BuildConfig
 import com.bublit.app.domain.OcrScanLanguage
 import com.bublit.app.pipeline.ImageProcessingService
+import com.bublit.app.pipeline.ProcessedImage
 import com.bublit.app.session.BrowserSessionState
 import com.bublit.app.session.InlineImageTranslationState
 import com.bublit.app.session.imageTranslationStatusText
 import com.bublit.app.ui.BrowserScreen
+import kotlin.coroutines.cancellation.CancellationException
 
 @Composable
 fun BublitApp(modifier: Modifier = Modifier) {
@@ -51,9 +53,11 @@ fun BublitApp(modifier: Modifier = Modifier) {
         val imageUrl = nextPendingImageUrl ?: return@LaunchedEffect
         val remainingCount = inlineTranslationState.pendingImageUrls.size
         extractionStatus = "Translating image 1/$remainingCount..."
-        val processed = runCatching {
-            imageProcessingService.process(imageUrl, preferredOcrLanguage)
-        }
+        val processed = processInlineImageTranslation(
+            imageUrl = imageUrl,
+            preferredLanguage = preferredOcrLanguage,
+            processor = imageProcessingService::process,
+        )
 
         inlineTranslationState = processed.fold(
             onSuccess = { result ->
@@ -142,3 +146,17 @@ fun BublitApp(modifier: Modifier = Modifier) {
 
 private const val BROWSER_SESSION_PAGE_URL = "page_url"
 private const val BROWSER_SESSION_ADDRESS_TEXT = "address_text"
+
+internal suspend fun processInlineImageTranslation(
+    imageUrl: String,
+    preferredLanguage: OcrScanLanguage,
+    processor: suspend (String, OcrScanLanguage) -> ProcessedImage,
+): Result<ProcessedImage> {
+    return try {
+        Result.success(processor(imageUrl, preferredLanguage))
+    } catch (error: CancellationException) {
+        throw error
+    } catch (error: Exception) {
+        Result.failure(error)
+    }
+}

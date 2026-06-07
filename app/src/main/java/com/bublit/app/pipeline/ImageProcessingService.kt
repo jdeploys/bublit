@@ -18,6 +18,7 @@ import com.google.mlkit.vision.text.Text
 import java.io.ByteArrayOutputStream
 import java.net.URL
 import java.util.Base64
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -88,15 +89,12 @@ class ImageProcessingService(
     }
 
     private suspend fun translateWithFallback(text: String, language: SourceLanguage): String {
-        if (language == SourceLanguage.Unknown) {
-            return fakeTranslationEngine.translate(text, language)
-        }
-
-        return runCatching {
-            mlKitTranslationEngine.translate(text, language)
-        }.getOrElse {
-            fakeTranslationEngine.translate(text, language)
-        }
+        return translateWithFallback(
+            text = text,
+            language = language,
+            mlKitTranslator = mlKitTranslationEngine::translate,
+            fakeTranslator = fakeTranslationEngine::translate,
+        )
     }
 
     private suspend fun buildPlan(blocks: List<OcrTextBlock>): ImageTranslationPlan {
@@ -175,6 +173,25 @@ class ImageProcessingService(
 
 internal fun pngBytesToDataUri(bytes: ByteArray): String {
     return "data:image/png;base64,${Base64.getEncoder().encodeToString(bytes)}"
+}
+
+internal suspend fun translateWithFallback(
+    text: String,
+    language: SourceLanguage,
+    mlKitTranslator: suspend (String, SourceLanguage) -> String,
+    fakeTranslator: (String, SourceLanguage) -> String,
+): String {
+    if (language == SourceLanguage.Unknown) {
+        return fakeTranslator(text, language)
+    }
+
+    return try {
+        mlKitTranslator(text, language)
+    } catch (error: CancellationException) {
+        throw error
+    } catch (_: Exception) {
+        fakeTranslator(text, language)
+    }
 }
 
 data class ProcessedImage(
