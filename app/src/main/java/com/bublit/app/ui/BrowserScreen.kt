@@ -304,17 +304,6 @@ private fun AddressField(
                     }
                 },
             )
-            IconButton(
-                onClick = onNavigate,
-                modifier = Modifier.size(34.dp),
-            ) {
-                Text(
-                    text = "Go",
-                    color = Color(0xFF25686F),
-                    style = MaterialTheme.typography.labelLarge,
-                    maxLines = 1,
-                )
-            }
         }
     }
 }
