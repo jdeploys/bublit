@@ -5,6 +5,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,11 +22,13 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -245,6 +249,7 @@ private fun BrowserTopBar(
     onPreferredOcrLanguageChange: (OcrScanLanguage) -> Unit,
 ) {
     var isAddressFocused by remember { mutableStateOf(false) }
+    var isLanguageSheetVisible by remember { mutableStateOf(false) }
 
     Surface(
         color = Color(0xFFF7F9FB),
@@ -306,12 +311,13 @@ private fun BrowserTopBar(
                 }
             }
 
-            if (status.isNotBlank() && !isAddressFocused) {
+            if ((status.isNotBlank() || isImageTranslationEnabled) && !isAddressFocused) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(start = 96.dp, end = 56.dp, bottom = 7.dp),
                     verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Text(
                         text = status,
@@ -319,18 +325,15 @@ private fun BrowserTopBar(
                         overflow = TextOverflow.Ellipsis,
                         style = MaterialTheme.typography.labelMedium,
                         color = Color(0xFF52606A),
+                        modifier = Modifier.weight(1f),
                     )
+                    if (isImageTranslationEnabled) {
+                        PreferredOcrLanguageChip(
+                            selectedLanguage = preferredOcrLanguage,
+                            onClick = { isLanguageSheetVisible = true },
+                        )
+                    }
                 }
-            }
-
-            if (isImageTranslationEnabled && !isAddressFocused) {
-                PreferredOcrLanguageSelector(
-                    selectedLanguage = preferredOcrLanguage,
-                    onLanguageSelected = onPreferredOcrLanguageChange,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 96.dp, end = 56.dp, bottom = 7.dp),
-                )
             }
 
             if (isLoading) {
@@ -346,36 +349,85 @@ private fun BrowserTopBar(
             }
         }
     }
+
+    if (isLanguageSheetVisible) {
+        PreferredOcrLanguageBottomSheet(
+            selectedLanguage = preferredOcrLanguage,
+            onDismiss = { isLanguageSheetVisible = false },
+            onLanguageSelected = { language ->
+                onPreferredOcrLanguageChange(language)
+                isLanguageSheetVisible = false
+            },
+        )
+    }
 }
 
 @Composable
-private fun PreferredOcrLanguageSelector(
+private fun PreferredOcrLanguageChip(
     selectedLanguage: OcrScanLanguage,
-    onLanguageSelected: (OcrScanLanguage) -> Unit,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    TextButton(
+        onClick = onClick,
+        shape = RoundedCornerShape(14.dp),
+        colors = ButtonDefaults.textButtonColors(
+            containerColor = Color(0xFF25686F),
+            contentColor = Color.White,
+        ),
+        modifier = modifier.height(28.dp),
+        contentPadding = ButtonDefaults.TextButtonContentPadding,
     ) {
-        OcrScanLanguage.entries.forEach { language ->
-            val selected = language == selectedLanguage
-            TextButton(
-                onClick = { onLanguageSelected(language) },
-                shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.textButtonColors(
-                    containerColor = if (selected) Color(0xFF25686F) else Color.Transparent,
-                    contentColor = if (selected) Color.White else Color(0xFF52606A),
-                ),
-                modifier = Modifier.height(28.dp),
-                contentPadding = ButtonDefaults.TextButtonContentPadding,
+        Text(
+            text = selectedLanguage.shortLabel,
+            fontSize = 12.sp,
+            maxLines = 1,
+        )
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
+@Composable
+private fun PreferredOcrLanguageBottomSheet(
+    selectedLanguage: OcrScanLanguage,
+    onDismiss: () -> Unit,
+    onLanguageSelected: (OcrScanLanguage) -> Unit,
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 20.dp, end = 20.dp, bottom = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Text(
+                text = "OCR 우선 탐색 언어",
+                style = MaterialTheme.typography.titleMedium,
+                color = Color(0xFF172027),
+            )
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Text(
-                    text = language.shortLabel,
-                    fontSize = 12.sp,
-                    maxLines = 1,
-                )
+                OcrScanLanguage.entries.forEach { language ->
+                    val selected = language == selectedLanguage
+                    TextButton(
+                        onClick = { onLanguageSelected(language) },
+                        shape = RoundedCornerShape(18.dp),
+                        colors = ButtonDefaults.textButtonColors(
+                            containerColor = if (selected) Color(0xFF25686F) else Color(0xFFEFF3F5),
+                            contentColor = if (selected) Color.White else Color(0xFF24313A),
+                        ),
+                        modifier = Modifier.height(36.dp),
+                        contentPadding = ButtonDefaults.TextButtonContentPadding,
+                    ) {
+                        Text(
+                            text = "${language.shortLabel} · ${language.displayLabel}",
+                            fontSize = 13.sp,
+                            maxLines = 1,
+                        )
+                    }
+                }
             }
         }
     }
