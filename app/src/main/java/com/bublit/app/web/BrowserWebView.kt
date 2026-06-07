@@ -106,6 +106,7 @@ fun BrowserWebView(
                 }
             }
             refreshLayout.addView(webView, ViewGroup.LayoutParams(MATCH_PARENT, MATCH_PARENT))
+            refreshLayout.tag = webView
             refreshLayout.setOnRefreshListener {
                 currentOnRefreshRequested()
                 webView.reload()
@@ -115,7 +116,7 @@ fun BrowserWebView(
             refreshLayout
         },
         update = { refreshLayout ->
-            val webView = refreshLayout.getChildAt(0) as WebView
+            val webView = refreshLayout.tag as? WebView ?: return@AndroidView
             if (webView.url != url && url.isNotBlank()) {
                 webView.loadUrl(url)
             }
