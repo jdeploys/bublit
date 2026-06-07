@@ -1,7 +1,6 @@
 package com.bublit.app.ui
 
 import android.webkit.WebView
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,6 +20,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -35,7 +35,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
@@ -198,18 +197,21 @@ private fun BrowserTopBar(
                 if (!isAddressFocused) {
                     IconButton(
                         onClick = onToggleImageTranslation,
-                        modifier = Modifier.size(44.dp),
+                        modifier = Modifier.size(38.dp),
                     ) {
-                        Image(
-                            painter = painterResource(id = R.mipmap.ic_launcher_round),
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_image_translate_bubble),
                             contentDescription = if (isImageTranslationEnabled) {
                                 "Disable image translation"
                             } else {
                                 "Enable image translation"
                             },
-                            modifier = Modifier
-                                .size(if (isImageTranslationEnabled) 34.dp else 31.dp)
-                                .alpha(if (isImageTranslationEnabled) 1f else 0.62f),
+                            tint = if (isImageTranslationEnabled) {
+                                Color(0xFF25686F)
+                            } else {
+                                Color(0xFF65727B)
+                            },
+                            modifier = Modifier.size(24.dp),
                         )
                     }
                 }
