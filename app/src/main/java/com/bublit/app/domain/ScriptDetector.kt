@@ -4,6 +4,7 @@ class ScriptDetector {
     fun detectSourceLanguage(text: String): SourceLanguage {
         val counts = text.fold(ScriptCounts()) { counts, char ->
             when {
+                char.isJapaneseKana() -> counts.copy(japanese = counts.japanese + 1)
                 char.isChineseHan() -> counts.copy(chinese = counts.chinese + 1)
                 char.isLatinLetter() -> counts.copy(english = counts.english + 1)
                 char.isHangul() -> counts.copy(korean = counts.korean + 1)
@@ -12,6 +13,7 @@ class ScriptDetector {
         }
 
         return when {
+            counts.japanese > 0 -> SourceLanguage.Japanese
             counts.chinese > 0 && counts.chinese >= counts.english -> SourceLanguage.Chinese
             counts.english > 0 -> SourceLanguage.English
             else -> SourceLanguage.Unknown
@@ -21,6 +23,7 @@ class ScriptDetector {
     private data class ScriptCounts(
         val english: Int = 0,
         val chinese: Int = 0,
+        val japanese: Int = 0,
         val korean: Int = 0,
     )
 
@@ -32,6 +35,12 @@ class ScriptDetector {
         return this in '\u4E00'..'\u9FFF' ||
             this in '\u3400'..'\u4DBF' ||
             this in '\uF900'..'\uFAFF'
+    }
+
+    private fun Char.isJapaneseKana(): Boolean {
+        return this in '\u3040'..'\u309F' ||
+            this in '\u30A0'..'\u30FF' ||
+            this in '\u31F0'..'\u31FF'
     }
 
     private fun Char.isHangul(): Boolean {

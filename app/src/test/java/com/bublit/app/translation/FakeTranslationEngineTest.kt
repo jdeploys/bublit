@@ -24,6 +24,15 @@ class FakeTranslationEngineTest {
     }
 
     @Test
+    fun translatesJapaneseToKoreanPreview() {
+        val engine = FakeTranslationEngine()
+
+        val translated = engine.translate("行こう", SourceLanguage.Japanese)
+
+        assertEquals("가자", translated)
+    }
+
+    @Test
     fun unknownTextKeepsLocalPreviewMarker() {
         val engine = FakeTranslationEngine()
 

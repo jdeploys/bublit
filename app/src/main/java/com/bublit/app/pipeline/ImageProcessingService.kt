@@ -62,7 +62,8 @@ class ImageProcessingService(
     private suspend fun recognizeBlocks(bitmap: Bitmap): List<OcrTextBlock> {
         val latin = runCatching { ocrEngine.recognizeLatin(bitmap).toOcrBlocks(bitmap) }.getOrDefault(emptyList())
         val chinese = runCatching { ocrEngine.recognizeChinese(bitmap).toOcrBlocks(bitmap) }.getOrDefault(emptyList())
-        return (latin + chinese).distinctBy { block ->
+        val japanese = runCatching { ocrEngine.recognizeJapanese(bitmap).toOcrBlocks(bitmap) }.getOrDefault(emptyList())
+        return (latin + chinese + japanese).distinctBy { block ->
             "${block.text}:${block.bounds.left}:${block.bounds.top}:${block.bounds.width}:${block.bounds.height}"
         }
     }

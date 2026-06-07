@@ -13,6 +13,7 @@ data class ImageCandidate(
 enum class SourceLanguage {
     English,
     Chinese,
+    Japanese,
     Unknown,
 }
 

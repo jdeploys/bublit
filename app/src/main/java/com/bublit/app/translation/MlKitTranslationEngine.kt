@@ -18,6 +18,7 @@ class MlKitTranslationEngine {
         val source = when (sourceLanguage) {
             SourceLanguage.English -> TranslateLanguage.ENGLISH
             SourceLanguage.Chinese -> TranslateLanguage.CHINESE
+            SourceLanguage.Japanese -> TranslateLanguage.JAPANESE
             SourceLanguage.Unknown -> TranslateLanguage.ENGLISH
         }
         val options = TranslatorOptions.Builder()
@@ -39,6 +40,7 @@ class MlKitTranslationEngine {
         val source = when (sourceLanguage) {
             SourceLanguage.English -> TranslateLanguage.ENGLISH
             SourceLanguage.Chinese -> TranslateLanguage.CHINESE
+            SourceLanguage.Japanese -> TranslateLanguage.JAPANESE
             SourceLanguage.Unknown -> TranslateLanguage.ENGLISH
         }
         val options = TranslatorOptions.Builder()

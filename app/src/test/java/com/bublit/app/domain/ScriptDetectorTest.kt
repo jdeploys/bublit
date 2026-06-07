@@ -19,4 +19,11 @@ class ScriptDetectorTest {
 
         assertEquals(SourceLanguage.Chinese, language)
     }
+
+    @Test
+    fun japaneseTextChoosesJapaneseSourceForKoreanTranslation() {
+        val language = detector.detectSourceLanguage("ここで待っていて。")
+
+        assertEquals(SourceLanguage.Japanese, language)
+    }
 }

@@ -15,6 +15,7 @@ class ImageTranslationPlannerTest {
                 when (sourceLanguage) {
                     SourceLanguage.English -> "어디에 있는 거야?"
                     SourceLanguage.Chinese -> "가자"
+                    SourceLanguage.Japanese -> "가자"
                     SourceLanguage.Unknown -> text
                 }
             },

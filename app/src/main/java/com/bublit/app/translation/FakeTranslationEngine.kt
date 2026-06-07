@@ -12,8 +12,12 @@ class FakeTranslationEngine : TranslationEngine {
                 "계속 움직여."
             sourceLanguage == SourceLanguage.Chinese && normalized == "我们走吧" ->
                 "가자"
+            sourceLanguage == SourceLanguage.Japanese && normalized == "行こう" ->
+                "가자"
             sourceLanguage == SourceLanguage.Chinese ->
                 "중국어 대사 번역 준비 중"
+            sourceLanguage == SourceLanguage.Japanese ->
+                "일본어 대사 번역 준비 중"
             sourceLanguage == SourceLanguage.English ->
                 "$normalized (한국어 미리보기)"
             else ->
