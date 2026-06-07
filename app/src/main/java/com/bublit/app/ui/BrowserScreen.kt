@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.bublit.app.R
 import com.bublit.app.domain.ImageCandidate
+import com.bublit.app.session.InlineImageTranslationProgress
 import com.bublit.app.web.BrowserWebView
 
 @Composable
@@ -55,6 +56,8 @@ fun BrowserScreen(
     status: String,
     isImageTranslationEnabled: Boolean,
     imageCandidateCount: Int,
+    translatedImageUris: Map<String, String>,
+    translationProgress: InlineImageTranslationProgress,
     onUrlInputChange: (String) -> Unit,
     onActiveUrlChange: (String) -> Unit,
     onNavigate: () -> Unit,
@@ -102,41 +105,57 @@ fun BrowserScreen(
             )
         },
     ) { innerPadding ->
-        BrowserWebView(
-            url = activeUrl,
-            imageTranslationEnabled = isImageTranslationEnabled,
-            imageScanRequestId = imageScanRequestId,
+        Box(
             modifier = Modifier
                 .padding(innerPadding)
                 .fillMaxSize(),
-            onWebViewReady = { webView = it },
-            onPageStarted = { url ->
-                isLoading = true
-                onActiveUrlChange(url)
-                onUrlInputChange(url)
-                onStatusChange("Loading...")
-            },
-            onPageFinished = { url, candidates, backAvailable, forwardAvailable, didScan ->
-                isLoading = false
-                onActiveUrlChange(url)
-                onUrlInputChange(url)
-                canGoBack = backAvailable
-                canGoForward = forwardAvailable
-                if (didScan) {
-                    onImagesDiscovered(candidates)
-                    onStatusChange(
-                        if (candidates.isEmpty()) {
-                            "No large images found"
-                        } else {
-                            "${candidates.size} images found"
-                        },
-                    )
-                } else {
-                    onImagesDiscovered(emptyList())
-                    onStatusChange("")
-                }
-            },
-        )
+        ) {
+            BrowserWebView(
+                url = activeUrl,
+                imageTranslationEnabled = isImageTranslationEnabled,
+                imageScanRequestId = imageScanRequestId,
+                translatedImageUris = translatedImageUris,
+                modifier = Modifier.fillMaxSize(),
+                onWebViewReady = { webView = it },
+                onPageStarted = { url ->
+                    isLoading = true
+                    onActiveUrlChange(url)
+                    onUrlInputChange(url)
+                    onStatusChange("Loading...")
+                },
+                onPageFinished = { url, candidates, backAvailable, forwardAvailable, didScan ->
+                    isLoading = false
+                    onActiveUrlChange(url)
+                    onUrlInputChange(url)
+                    canGoBack = backAvailable
+                    canGoForward = forwardAvailable
+                    if (didScan) {
+                        onImagesDiscovered(candidates)
+                        onStatusChange(
+                            if (candidates.isEmpty()) {
+                                "No large images found"
+                            } else {
+                                "${candidates.size} images found"
+                            },
+                        )
+                    } else {
+                        onImagesDiscovered(emptyList())
+                        onStatusChange("")
+                    }
+                },
+            )
+            if (translationProgress.isVisible) {
+                LinearProgressIndicator(
+                    progress = { translationProgress.fraction },
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .height(4.dp),
+                    color = Color(0xFF25686F),
+                    trackColor = Color(0x3325686F),
+                )
+            }
+        }
     }
 }
 

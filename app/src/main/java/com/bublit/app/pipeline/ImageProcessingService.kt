@@ -1,10 +1,8 @@
 package com.bublit.app.pipeline
 
-import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Rect
-import androidx.core.net.toUri
 import com.bublit.app.domain.ScriptDetector
 import com.bublit.app.domain.BubbleBounds
 import com.bublit.app.domain.OcrTextBlock
@@ -16,14 +14,13 @@ import com.bublit.app.render.BitmapTypesetRenderer
 import com.bublit.app.translation.FakeTranslationEngine
 import com.bublit.app.translation.MlKitTranslationEngine
 import com.google.mlkit.vision.text.Text
-import java.io.File
+import java.io.ByteArrayOutputStream
 import java.net.URL
-import java.security.MessageDigest
+import java.util.Base64
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 class ImageProcessingService(
-    private val context: Context,
     private val ocrEngine: MlKitOcrEngine = MlKitOcrEngine(),
     private val mlKitTranslationEngine: MlKitTranslationEngine = MlKitTranslationEngine(),
     private val fakeTranslationEngine: FakeTranslationEngine = FakeTranslationEngine(),
@@ -37,11 +34,11 @@ class ImageProcessingService(
         val ocrBlocks = recognizeBlocks(original)
         val plan = buildPlan(ocrBlocks)
         val rendered = renderer.render(original, plan)
-        val outputFile = writeRenderedBitmap(imageUrl, rendered)
+        val renderedImageUri = encodeRenderedBitmap(rendered)
 
         ProcessedImage(
             imageUrl = imageUrl,
-            renderedImageUri = outputFile.toUri().toString(),
+            renderedImageUri = renderedImageUri,
             acceptedBlocks = plan.blocks.size,
             rejectedBlocks = plan.rejectedBlocks,
         )
@@ -98,13 +95,10 @@ class ImageProcessingService(
         )
     }
 
-    private fun writeRenderedBitmap(imageUrl: String, bitmap: Bitmap): File {
-        val directory = File(context.cacheDir, "rendered-images").apply { mkdirs() }
-        val file = File(directory, "${imageUrl.sha256()}.png")
-        file.outputStream().use { output ->
-            bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)
-        }
-        return file
+    private fun encodeRenderedBitmap(bitmap: Bitmap): String {
+        val output = ByteArrayOutputStream()
+        bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)
+        return pngBytesToDataUri(output.toByteArray())
     }
 
     private fun Text.toOcrBlocks(bitmap: Bitmap): List<OcrTextBlock> {
@@ -155,10 +149,10 @@ class ImageProcessingService(
         return if (samples == 0) 1.0 else total / samples
     }
 
-    private fun String.sha256(): String {
-        val digest = MessageDigest.getInstance("SHA-256").digest(toByteArray())
-        return digest.joinToString("") { byte -> "%02x".format(byte) }
-    }
+}
+
+internal fun pngBytesToDataUri(bytes: ByteArray): String {
+    return "data:image/png;base64,${Base64.getEncoder().encodeToString(bytes)}"
 }
 
 data class ProcessedImage(
