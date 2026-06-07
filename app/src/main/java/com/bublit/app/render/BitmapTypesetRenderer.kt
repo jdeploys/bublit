@@ -5,6 +5,7 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Rect
+import android.graphics.RectF
 import com.bublit.app.pipeline.ImageTranslationPlan
 
 class BitmapTypesetRenderer {
@@ -14,12 +15,19 @@ class BitmapTypesetRenderer {
 
         plan.blocks.forEach { block ->
             val rect = block.renderPlan.bounds.toClampedRect(output.width, output.height)
-            val fillColor = sampleAverageColor(output, rect)
             val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = fillColor
+                color = speechBubblePatchColor(sampleAverageColor(output, rect))
                 style = Paint.Style.FILL
             }
-            canvas.drawRect(rect, fillPaint)
+            val patchRect = RectF(rect)
+            canvas.drawRoundRect(patchRect, 14f, 14f, fillPaint)
+
+            val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.rgb(220, 214, 202)
+                style = Paint.Style.STROKE
+                strokeWidth = 2f
+            }
+            canvas.drawRoundRect(patchRect, 14f, 14f, strokePaint)
 
             val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 color = Color.rgb(20, 20, 20)
@@ -81,4 +89,8 @@ class BitmapTypesetRenderer {
             (blue / samples).toInt().coerceIn(0, 255),
         )
     }
+}
+
+internal fun speechBubblePatchColor(sampledColor: Int): Int {
+    return 0xFFF8F4EA.toInt()
 }
