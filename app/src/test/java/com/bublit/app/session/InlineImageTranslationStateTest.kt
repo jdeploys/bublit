@@ -1,6 +1,7 @@
 package com.bublit.app.session
 
 import com.bublit.app.domain.ImageCandidate
+import com.bublit.app.domain.SpeechBubbleRejectionReason
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -144,6 +145,62 @@ class InlineImageTranslationStateTest {
         assertEquals(1, summary.translatedImages)
         assertEquals(1, summary.acceptedBlocks)
         assertEquals(23, summary.rejectedBlocks)
+    }
+
+    @Test
+    fun completedImageStoresDetailedRejectionReasonCountsInDebugSummary() {
+        val state = InlineImageTranslationState().discoverImages(
+            enabled = true,
+            candidates = listOf(
+                ImageCandidate("https://example.com/page-1.jpg", 1080, 1600, top = 120),
+                ImageCandidate("https://example.com/page-2.jpg", 1080, 1600, top = 1800),
+            ),
+        ).complete(
+            imageUrl = "https://example.com/page-1.jpg",
+            translatedImageUri = "data:image/png;base64,AQID",
+            acceptedBlocks = 1,
+            rejectedBlocks = 3,
+            rejectionReasonCounts = mapOf(
+                SpeechBubbleRejectionReason.DarkBackground to 2,
+                SpeechBubbleRejectionReason.TooNarrow to 1,
+            ),
+        ).complete(
+            imageUrl = "https://example.com/page-2.jpg",
+            translatedImageUri = "data:image/png;base64,BAUG",
+            acceptedBlocks = 0,
+            rejectedBlocks = 2,
+            rejectionReasonCounts = mapOf(
+                SpeechBubbleRejectionReason.DarkBackground to 1,
+                SpeechBubbleRejectionReason.LowContrast to 1,
+            ),
+        )
+
+        val summary = state.debugSummary
+
+        assertEquals(5, summary.rejectedBlocks)
+        assertEquals(3, summary.rejectionReasonCounts[SpeechBubbleRejectionReason.DarkBackground])
+        assertEquals(1, summary.rejectionReasonCounts[SpeechBubbleRejectionReason.TooNarrow])
+        assertEquals(1, summary.rejectionReasonCounts[SpeechBubbleRejectionReason.LowContrast])
+    }
+
+    @Test
+    fun debugSummaryFormatsDetailedRejectionReasonsForDisplay() {
+        val summary = ImageTranslationDebugSummary(
+            translatedImages = 1,
+            failedImages = 0,
+            acceptedBlocks = 1,
+            rejectedBlocks = 4,
+            rejectionReasonCounts = mapOf(
+                SpeechBubbleRejectionReason.DarkBackground to 2,
+                SpeechBubbleRejectionReason.TooNarrow to 1,
+                SpeechBubbleRejectionReason.LowContrast to 1,
+            ),
+        )
+
+        assertEquals(
+            "제외 사유: 어두운 배경 2개 / 너무 좁음 1개 / 낮은 대비 1개",
+            summary.rejectionReasonSummaryText(),
+        )
     }
 
     @Test

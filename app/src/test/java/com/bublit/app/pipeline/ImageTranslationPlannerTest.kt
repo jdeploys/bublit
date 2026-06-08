@@ -1,8 +1,10 @@
 package com.bublit.app.pipeline
 
 import com.bublit.app.domain.BubbleBounds
+import com.bublit.app.domain.BubbleRegionCandidate
 import com.bublit.app.domain.OcrTextBlock
 import com.bublit.app.domain.SourceLanguage
+import com.bublit.app.domain.SpeechBubbleRejectionReason
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -60,5 +62,95 @@ class ImageTranslationPlannerTest {
 
         assertEquals(emptyList<TypesetBlock>(), result.blocks)
         assertEquals(1, result.rejectedBlocks)
+    }
+
+    @Test
+    fun rejectedBackgroundTextIncludesDetailedRejectionReasons() {
+        val planner = ImageTranslationPlanner(
+            translator = { text, _ -> "$text translated" },
+        )
+
+        val result = planner.plan(
+            blocks = listOf(
+                OcrTextBlock(
+                    text = "ドーン",
+                    bounds = BubbleBounds(left = 10, top = 12, width = 24, height = 18),
+                    backgroundLuma = 0.32,
+                    foregroundLuma = 0.12,
+                    confidence = 0.44,
+                ),
+            ),
+        )
+
+        assertEquals(1, result.rejectedBlocks)
+        assertEquals(1, result.rejectionReasonCounts[SpeechBubbleRejectionReason.LowConfidence])
+        assertEquals(1, result.rejectionReasonCounts[SpeechBubbleRejectionReason.TooNarrow])
+        assertEquals(1, result.rejectionReasonCounts[SpeechBubbleRejectionReason.TooShort])
+        assertEquals(1, result.rejectionReasonCounts[SpeechBubbleRejectionReason.DarkBackground])
+        assertEquals(1, result.rejectionReasonCounts[SpeechBubbleRejectionReason.LowContrast])
+    }
+
+    @Test
+    fun narrowJapaneseTextUsesDetectedBrightBubbleRegionForClassificationButTextBoundsForRendering() {
+        val planner = ImageTranslationPlanner(
+            translator = { _, _ -> "너무 부끄럽잖아" },
+        )
+        val bubbleRegion = BubbleRegionCandidate(
+            bounds = BubbleBounds(left = 108, top = 54, width = 96, height = 174),
+            backgroundLuma = 0.91,
+        )
+
+        val result = planner.plan(
+            blocks = listOf(
+                OcrTextBlock(
+                    text = "恥ずかしすぎるだろー",
+                    bounds = BubbleBounds(left = 142, top = 88, width = 24, height = 112),
+                    backgroundLuma = 0.37,
+                    foregroundLuma = 0.08,
+                    confidence = 0.86,
+                    bubbleRegion = bubbleRegion,
+                ),
+            ),
+        )
+
+        assertEquals(1, result.blocks.size)
+        assertTrue(result.blocks.single().renderPlan.bounds.width < bubbleRegion.bounds.width)
+        assertTrue(result.blocks.single().renderPlan.bounds.height <= bubbleRegion.bounds.height)
+        assertEquals(emptyMap<SpeechBubbleRejectionReason, Int>(), result.rejectionReasonCounts)
+    }
+
+    @Test
+    fun multipleOcrLinesInSameDetectedBubbleBecomeSingleTypesetBlock() {
+        val planner = ImageTranslationPlanner(
+            translator = { text, _ -> "merged: $text" },
+        )
+        val bubbleRegion = BubbleRegionCandidate(
+            bounds = BubbleBounds(left = 40, top = 30, width = 120, height = 150),
+            backgroundLuma = 0.92,
+        )
+
+        val result = planner.plan(
+            blocks = listOf(
+                OcrTextBlock(
+                    text = "大丈夫ウサ！",
+                    bounds = BubbleBounds(left = 74, top = 52, width = 20, height = 48),
+                    backgroundLuma = 0.34,
+                    foregroundLuma = 0.08,
+                    confidence = 0.86,
+                    bubbleRegion = bubbleRegion,
+                ),
+                OcrTextBlock(
+                    text = "変身すれば",
+                    bounds = BubbleBounds(left = 98, top = 52, width = 20, height = 72),
+                    backgroundLuma = 0.35,
+                    foregroundLuma = 0.08,
+                    confidence = 0.86,
+                    bubbleRegion = bubbleRegion,
+                ),
+            ),
+        )
+
+        assertEquals(1, result.blocks.size)
+        assertEquals("変身すれば\n大丈夫ウサ！", result.blocks.single().sourceText)
     }
 }

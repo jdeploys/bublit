@@ -66,6 +66,7 @@ fun BublitApp(modifier: Modifier = Modifier) {
                     translatedImageUri = result.renderedImageUri,
                     acceptedBlocks = result.acceptedBlocks,
                     rejectedBlocks = result.rejectedBlocks,
+                    rejectionReasonCounts = result.rejectionReasonCounts,
                 )
             },
             onFailure = { inlineTranslationState.fail(imageUrl) },

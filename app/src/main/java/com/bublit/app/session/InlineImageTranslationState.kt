@@ -1,6 +1,7 @@
 package com.bublit.app.session
 
 import com.bublit.app.domain.ImageCandidate
+import com.bublit.app.domain.SpeechBubbleRejectionReason
 
 data class InlineImageTranslationState(
     val candidates: List<ImageCandidate> = emptyList(),
@@ -32,6 +33,10 @@ data class InlineImageTranslationState(
                 failedImages = failedImageUrls.size,
                 acceptedBlocks = debugResults.values.sumOf { it.acceptedBlocks },
                 rejectedBlocks = debugResults.values.sumOf { it.rejectedBlocks },
+                rejectionReasonCounts = debugResults.values
+                    .flatMap { it.rejectionReasonCounts.entries }
+                    .groupingBy { it.key }
+                    .fold(0) { total, entry -> total + entry.value },
             )
         }
 
@@ -58,6 +63,7 @@ data class InlineImageTranslationState(
         translatedImageUri: String,
         acceptedBlocks: Int = 0,
         rejectedBlocks: Int = 0,
+        rejectionReasonCounts: Map<SpeechBubbleRejectionReason, Int> = emptyMap(),
     ): InlineImageTranslationState {
         return copy(
             pendingImageUrls = pendingImageUrls - imageUrl,
@@ -67,6 +73,7 @@ data class InlineImageTranslationState(
                 imageUrl to ImageTranslationDebugResult(
                     acceptedBlocks = acceptedBlocks,
                     rejectedBlocks = rejectedBlocks,
+                    rejectionReasonCounts = rejectionReasonCounts,
                 )
                 ),
         )
@@ -106,6 +113,7 @@ data class InlineImageTranslationProgress(
 data class ImageTranslationDebugResult(
     val acceptedBlocks: Int,
     val rejectedBlocks: Int,
+    val rejectionReasonCounts: Map<SpeechBubbleRejectionReason, Int> = emptyMap(),
 )
 
 data class ImageTranslationDebugSummary(
@@ -113,11 +121,25 @@ data class ImageTranslationDebugSummary(
     val failedImages: Int,
     val acceptedBlocks: Int,
     val rejectedBlocks: Int,
+    val rejectionReasonCounts: Map<SpeechBubbleRejectionReason, Int> = emptyMap(),
 ) {
     val hasResults: Boolean
         get() = translatedImages > 0 || failedImages > 0
 
     fun isVisibleInBuild(isDebugBuild: Boolean): Boolean {
         return isDebugBuild && hasResults
+    }
+
+    fun rejectionReasonSummaryText(): String {
+        val segments = SpeechBubbleRejectionReason.entries.mapNotNull { reason ->
+            val count = rejectionReasonCounts[reason] ?: return@mapNotNull null
+            if (count <= 0) return@mapNotNull null
+            "${reason.displayLabel} ${count}개"
+        }
+        return if (segments.isEmpty()) {
+            ""
+        } else {
+            "제외 사유: ${segments.joinToString(" / ")}"
+        }
     }
 }

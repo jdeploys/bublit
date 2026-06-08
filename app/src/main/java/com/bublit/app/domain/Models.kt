@@ -45,13 +45,26 @@ data class OcrTextBlock(
     val backgroundLuma: Double,
     val foregroundLuma: Double,
     val confidence: Double,
+    val bubbleRegion: BubbleRegionCandidate? = null,
 )
 
 data class AcceptedBubbleText(
     val originalText: String,
     val bounds: BubbleBounds,
     val sourceLanguage: SourceLanguage,
+    val boundsSource: AcceptedBubbleBoundsSource = AcceptedBubbleBoundsSource.RawOcrTextBounds,
+    val containingBounds: BubbleBounds? = null,
 )
+
+data class BubbleRegionCandidate(
+    val bounds: BubbleBounds,
+    val backgroundLuma: Double,
+)
+
+enum class AcceptedBubbleBoundsSource {
+    RawOcrTextBounds,
+    DetectedBubbleRegion,
+}
 
 data class TextRenderPlan(
     val text: String,
@@ -60,4 +73,5 @@ data class TextRenderPlan(
     val fontSizePx: Int,
     val estimatedWidthPx: Int,
     val estimatedHeightPx: Int,
+    val patchBounds: BubbleBounds = bounds,
 )

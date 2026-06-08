@@ -4,6 +4,7 @@ import com.bublit.app.domain.OcrTextBlock
 import com.bublit.app.domain.ScriptDetector
 import com.bublit.app.domain.SourceLanguage
 import com.bublit.app.domain.SpeechBubbleClassifier
+import com.bublit.app.domain.SpeechBubbleRejectionReason
 import com.bublit.app.domain.TextRenderPlan
 import com.bublit.app.domain.TypesetPlanner
 
@@ -14,8 +15,8 @@ class ImageTranslationPlanner(
     private val translator: (String, SourceLanguage) -> String,
 ) {
     fun plan(blocks: List<OcrTextBlock>): ImageTranslationPlan {
-        val accepted = classifier.acceptedBubbleTexts(blocks, scriptDetector)
-        val typesetBlocks = accepted.map { bubble ->
+        val classification = classifier.classifyBlocks(blocks, scriptDetector)
+        val typesetBlocks = classification.acceptedBubbleTexts.map { bubble ->
             val translatedText = translator(bubble.originalText, bubble.sourceLanguage)
             TypesetBlock(
                 sourceText = bubble.originalText,
@@ -27,7 +28,8 @@ class ImageTranslationPlanner(
 
         return ImageTranslationPlan(
             blocks = typesetBlocks,
-            rejectedBlocks = blocks.size - accepted.size,
+            rejectedBlocks = classification.rejectedBlocks,
+            rejectionReasonCounts = classification.rejectionReasonCounts,
         )
     }
 }
@@ -35,6 +37,7 @@ class ImageTranslationPlanner(
 data class ImageTranslationPlan(
     val blocks: List<TypesetBlock>,
     val rejectedBlocks: Int,
+    val rejectionReasonCounts: Map<SpeechBubbleRejectionReason, Int> = emptyMap(),
 )
 
 data class TypesetBlock(

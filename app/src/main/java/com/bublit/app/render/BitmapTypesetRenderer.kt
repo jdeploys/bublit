@@ -14,20 +14,22 @@ class BitmapTypesetRenderer {
         val canvas = Canvas(output)
 
         plan.blocks.forEach { block ->
-            val rect = block.renderPlan.bounds.toClampedRect(output.width, output.height)
+            val patchRect = block.renderPlan.patchBounds.toClampedRect(output.width, output.height)
+            val textRect = block.renderPlan.bounds.toClampedRect(output.width, output.height, padding = 0)
             val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = speechBubblePatchColor(sampleAverageColor(output, rect))
+                color = speechBubblePatchColor(sampleAverageColor(output, patchRect))
                 style = Paint.Style.FILL
             }
-            val patchRect = RectF(rect)
-            canvas.drawRoundRect(patchRect, 14f, 14f, fillPaint)
+            val patchRoundRect = RectF(patchRect)
+            val cornerRadius = minOf(patchRect.width(), patchRect.height()) * 0.28f
+            canvas.drawRoundRect(patchRoundRect, cornerRadius, cornerRadius, fillPaint)
 
             val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 color = Color.rgb(220, 214, 202)
                 style = Paint.Style.STROKE
                 strokeWidth = 2f
             }
-            canvas.drawRoundRect(patchRect, 14f, 14f, strokePaint)
+            canvas.drawRoundRect(patchRoundRect, cornerRadius, cornerRadius, strokePaint)
 
             val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 color = Color.rgb(20, 20, 20)
@@ -38,10 +40,10 @@ class BitmapTypesetRenderer {
 
             val lineHeight = block.renderPlan.fontSizePx * 1.22f
             val totalHeight = lineHeight * block.renderPlan.lines.size
-            var baseline = rect.centerY() - totalHeight / 2f - textPaint.fontMetrics.ascent
+            var baseline = textRect.centerY() - totalHeight / 2f - textPaint.fontMetrics.ascent
 
             block.renderPlan.lines.forEach { line ->
-                canvas.drawText(line, rect.centerX().toFloat(), baseline, textPaint)
+                canvas.drawText(line, textRect.centerX().toFloat(), baseline, textPaint)
                 baseline += lineHeight
             }
         }
@@ -49,8 +51,11 @@ class BitmapTypesetRenderer {
         return output
     }
 
-    private fun com.bublit.app.domain.BubbleBounds.toClampedRect(maxWidth: Int, maxHeight: Int): Rect {
-        val padding = 6
+    private fun com.bublit.app.domain.BubbleBounds.toClampedRect(
+        maxWidth: Int,
+        maxHeight: Int,
+        padding: Int = 6,
+    ): Rect {
         val left = (this.left - padding).coerceIn(0, maxWidth)
         val top = (this.top - padding).coerceIn(0, maxHeight)
         val right = (this.right + padding).coerceIn(left, maxWidth)

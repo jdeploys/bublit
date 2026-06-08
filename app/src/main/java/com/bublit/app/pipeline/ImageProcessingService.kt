@@ -5,10 +5,12 @@ import android.graphics.BitmapFactory
 import android.graphics.Rect
 import com.bublit.app.domain.ScriptDetector
 import com.bublit.app.domain.BubbleBounds
+import com.bublit.app.domain.BubbleRegionFinder
 import com.bublit.app.domain.OcrTextBlock
 import com.bublit.app.domain.OcrScanLanguage
 import com.bublit.app.domain.SourceLanguage
 import com.bublit.app.domain.SpeechBubbleClassifier
+import com.bublit.app.domain.SpeechBubbleRejectionReason
 import com.bublit.app.domain.TypesetPlanner
 import com.bublit.app.ocr.MlKitOcrEngine
 import com.bublit.app.render.BitmapTypesetRenderer
@@ -30,6 +32,7 @@ class ImageProcessingService(
     private val classifier: SpeechBubbleClassifier = SpeechBubbleClassifier(),
     private val scriptDetector: ScriptDetector = ScriptDetector(),
     private val typesetPlanner: TypesetPlanner = TypesetPlanner(),
+    private val bubbleRegionFinder: BubbleRegionFinder = BubbleRegionFinder(),
 ) {
     suspend fun process(
         imageUrl: String,
@@ -46,6 +49,7 @@ class ImageProcessingService(
             renderedImageUri = renderedImageUri,
             acceptedBlocks = plan.blocks.size,
             rejectedBlocks = plan.rejectedBlocks,
+            rejectionReasonCounts = plan.rejectionReasonCounts,
         )
     }
 
@@ -65,13 +69,10 @@ class ImageProcessingService(
         bitmap: Bitmap,
         preferredLanguage: OcrScanLanguage,
     ): List<OcrTextBlock> {
-        val primaryBlocks = recognizeBlocksForLanguage(bitmap, preferredLanguage)
-        if (primaryBlocks.isNotEmpty()) return deduplicateOcrBlocks(primaryBlocks)
-
-        val fallbackBlocks = ocrScanOrder(preferredLanguage)
-            .drop(1)
-            .flatMap { language -> recognizeBlocksForLanguage(bitmap, language) }
-        return deduplicateOcrBlocks(fallbackBlocks)
+        val candidates = ocrScanOrder(preferredLanguage).map { language ->
+            deduplicateOcrBlocks(recognizeBlocksForLanguage(bitmap, language))
+        }
+        return selectBestOcrBlocks(candidates, classifier, scriptDetector)
     }
 
     private suspend fun recognizeBlocksForLanguage(
@@ -98,8 +99,8 @@ class ImageProcessingService(
     }
 
     private suspend fun buildPlan(blocks: List<OcrTextBlock>): ImageTranslationPlan {
-        val accepted = classifier.acceptedBubbleTexts(blocks, scriptDetector)
-        val typesetBlocks = accepted.map { bubble ->
+        val classification = classifier.classifyBlocks(blocks, scriptDetector)
+        val typesetBlocks = classification.acceptedBubbleTexts.map { bubble ->
             val translatedText = translateWithFallback(bubble.originalText, bubble.sourceLanguage)
             TypesetBlock(
                 sourceText = bubble.originalText,
@@ -111,7 +112,8 @@ class ImageProcessingService(
 
         return ImageTranslationPlan(
             blocks = typesetBlocks,
-            rejectedBlocks = blocks.size - accepted.size,
+            rejectedBlocks = classification.rejectedBlocks,
+            rejectionReasonCounts = classification.rejectionReasonCounts,
         )
     }
 
@@ -137,9 +139,17 @@ class ImageProcessingService(
                 backgroundLuma = bitmap.averageLuma(rect),
                 foregroundLuma = 0.08,
                 confidence = 0.86,
+                bubbleRegion = bitmap.findBubbleRegion(bounds),
             )
         }
     }
+
+    private fun Bitmap.findBubbleRegion(seedBounds: BubbleBounds) = bubbleRegionFinder.find(
+        imageWidth = width,
+        imageHeight = height,
+        seedBounds = seedBounds,
+        lumaAt = { x, y -> pixelLuma(getPixel(x, y)) },
+    )
 
     private fun Bitmap.averageLuma(rect: Rect): Double {
         var total = 0.0
@@ -156,10 +166,7 @@ class ImageProcessingService(
             var x = left
             while (x < right) {
                 val pixel = getPixel(x, y)
-                val red = android.graphics.Color.red(pixel)
-                val green = android.graphics.Color.green(pixel)
-                val blue = android.graphics.Color.blue(pixel)
-                total += ((0.299 * red) + (0.587 * green) + (0.114 * blue)) / 255.0
+                total += pixelLuma(pixel)
                 samples++
                 x += stepX
             }
@@ -169,6 +176,13 @@ class ImageProcessingService(
         return if (samples == 0) 1.0 else total / samples
     }
 
+}
+
+private fun pixelLuma(pixel: Int): Double {
+    val red = android.graphics.Color.red(pixel)
+    val green = android.graphics.Color.green(pixel)
+    val blue = android.graphics.Color.blue(pixel)
+    return ((0.299 * red) + (0.587 * green) + (0.114 * blue)) / 255.0
 }
 
 internal fun pngBytesToDataUri(bytes: ByteArray): String {
@@ -199,8 +213,23 @@ data class ProcessedImage(
     val renderedImageUri: String,
     val acceptedBlocks: Int,
     val rejectedBlocks: Int,
+    val rejectionReasonCounts: Map<SpeechBubbleRejectionReason, Int> = emptyMap(),
 )
 
 internal fun ocrScanOrder(preferredLanguage: OcrScanLanguage): List<OcrScanLanguage> {
     return listOf(preferredLanguage) + OcrScanLanguage.entries.filter { it != preferredLanguage }
+}
+
+internal fun selectBestOcrBlocks(
+    candidates: List<List<OcrTextBlock>>,
+    classifier: SpeechBubbleClassifier = SpeechBubbleClassifier(),
+    scriptDetector: ScriptDetector = ScriptDetector(),
+): List<OcrTextBlock> {
+    return candidates.maxWithOrNull(
+        compareBy<List<OcrTextBlock>> { blocks ->
+            classifier.classifyBlocks(blocks, scriptDetector).acceptedBubbleTexts.size
+        }.thenBy { blocks ->
+            blocks.size
+        },
+    ).orEmpty()
 }

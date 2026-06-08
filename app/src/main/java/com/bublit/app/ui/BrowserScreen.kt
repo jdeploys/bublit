@@ -214,7 +214,8 @@ private fun TranslationDebugButton(
             ) {
                 Text(
                     text = "이미지: 번역 ${summary.translatedImages}개 / 실패 ${summary.failedImages}개\n" +
-                        "OCR: 말풍선 ${summary.acceptedBlocks}개 / 제외 ${summary.rejectedBlocks}개",
+                        "OCR: 말풍선 ${summary.acceptedBlocks}개 / 제외 ${summary.rejectedBlocks}개" +
+                        summary.rejectionReasonSummaryText().takeIf { it.isNotBlank() }?.let { "\n$it" }.orEmpty(),
                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
                     fontSize = 12.sp,
                     lineHeight = 16.sp,
