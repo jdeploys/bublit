@@ -61,7 +61,7 @@ class TypesetPlannerTest {
 
         val plan = planner.plan(
             bubble = bubble,
-            translatedText = "너무 부끄럽잖아",
+            translatedText = "번역된 문장입니다",
         )
 
         assertTrue(plan.bounds.width >= 72)

@@ -93,7 +93,7 @@ class ImageTranslationPlannerTest {
     @Test
     fun narrowJapaneseTextUsesDetectedBrightBubbleRegionForClassificationButTextBoundsForRendering() {
         val planner = ImageTranslationPlanner(
-            translator = { _, _ -> "너무 부끄럽잖아" },
+            translator = { _, _ -> "번역된 문장입니다" },
         )
         val bubbleRegion = BubbleRegionCandidate(
             bounds = BubbleBounds(left = 108, top = 54, width = 96, height = 174),
